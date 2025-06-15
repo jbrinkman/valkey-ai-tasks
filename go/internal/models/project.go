@@ -26,8 +26,8 @@ func NewProject(id, name, description string) *Project {
 }
 
 // ToMap converts the project to a map for storage in Valkey
-func (p *Project) ToMap() map[string]interface{} {
-	return map[string]interface{}{
+func (p *Project) ToMap() map[string]string {
+	return map[string]string{
 		"id":          p.ID,
 		"name":        p.Name,
 		"description": p.Description,

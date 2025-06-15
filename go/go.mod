@@ -1,10 +1,12 @@
-module github.com/jbrinkman/valkey-ai-tasks
+module github.com/jbrinkman/valkey-ai-tasks/go
 
-go 1.20
+go 1.24
+
+toolchain go1.24.2
 
 require (
-	github.com/gin-gonic/gin v1.9.1
-	github.com/spf13/viper v1.16.0
-	github.com/valkey-io/valkey-glide/go/v2 v2.0.0-rc6
 	github.com/google/uuid v1.6.0
+	github.com/valkey-io/valkey-glide/go/v2 v2.0.0-rc6
 )
+
+require google.golang.org/protobuf v1.33.0 // indirect

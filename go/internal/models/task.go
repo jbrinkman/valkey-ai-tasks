@@ -54,15 +54,15 @@ func NewTask(id, projectID, title, description string, priority TaskPriority) *T
 }
 
 // ToMap converts the task to a map for storage in Valkey
-func (t *Task) ToMap() map[string]interface{} {
-	return map[string]interface{}{
+func (t *Task) ToMap() map[string]string {
+	return map[string]string{
 		"id":          t.ID,
 		"project_id":  t.ProjectID,
 		"title":       t.Title,
 		"description": t.Description,
 		"status":      string(t.Status),
 		"priority":    string(t.Priority),
-		"order":       t.Order,
+		"order":       fmt.Sprintf("%d", t.Order),
 		"created_at":  t.CreatedAt.Format(time.RFC3339),
 		"updated_at":  t.UpdatedAt.Format(time.RFC3339),
 	}

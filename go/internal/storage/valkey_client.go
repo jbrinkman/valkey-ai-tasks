@@ -3,7 +3,9 @@ package storage
 import (
 	"context"
 	"fmt"
-	"github.com/valkey-io/valkey-glide/go/v2"
+
+	glide "github.com/valkey-io/valkey-glide/go/v2"
+	"github.com/valkey-io/valkey-glide/go/v2/config"
 )
 
 // ValkeyClient wraps the Valkey-Glide client for our application
@@ -13,13 +15,14 @@ type ValkeyClient struct {
 
 // NewValkeyClient creates a new Valkey client with the given connection options
 func NewValkeyClient(address string, port int, username, password string) (*ValkeyClient, error) {
-	opts := &glide.ClientOptions{
-		Addresses: []string{fmt.Sprintf("%s:%d", address, port)},
-		Username:  username,
-		Password:  password,
+	clientConfig := config.NewClientConfiguration().
+		WithAddress(&config.NodeAddress{Host: address, Port: port})
+
+	if username != "" && password != "" {
+		clientConfig.WithCredentials(config.NewServerCredentials(username, password))
 	}
 
-	client, err := glide.NewClient(opts)
+	client, err := glide.NewClient(clientConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Valkey client: %w", err)
 	}
@@ -31,12 +34,14 @@ func NewValkeyClient(address string, port int, username, password string) (*Valk
 
 // Ping checks the connection to the Valkey server
 func (vc *ValkeyClient) Ping(ctx context.Context) error {
-	return vc.client.Ping(ctx).Err()
+	_, err := vc.client.Ping(ctx)
+	return err
 }
 
 // Close closes the Valkey client connection
 func (vc *ValkeyClient) Close() error {
-	return vc.client.Close()
+	vc.client.Close()
+	return nil
 }
 
 // Keys used for storing data in Valkey

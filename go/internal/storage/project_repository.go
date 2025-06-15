@@ -2,12 +2,12 @@ package storage
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
+	uuid "github.com/google/uuid"
 	"github.com/jbrinkman/valkey-ai-tasks/go/internal/models"
+	"github.com/valkey-io/valkey-glide/go/v2/options"
 )
 
 // ProjectRepository handles storage operations for projects
@@ -30,24 +30,18 @@ func (r *ProjectRepository) Create(ctx context.Context, name, description string
 	// Create a new project
 	project := models.NewProject(id, name, description)
 
-	// Convert project to JSON for storage
-	projectJSON, err := json.Marshal(project)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal project: %w", err)
-	}
-
 	// Store the project in Valkey
 	projectKey := GetProjectKey(id)
-	err = r.client.client.HSet(ctx, projectKey, project.ToMap()).Err()
+	_, err := r.client.client.HSet(ctx, projectKey, project.ToMap())
 	if err != nil {
 		return nil, fmt.Errorf("failed to store project: %w", err)
 	}
 
 	// Add project ID to the projects list
-	err = r.client.client.SAdd(ctx, projectsListKey, id).Err()
+	_, err = r.client.client.SAdd(ctx, projectsListKey, []string{id})
 	if err != nil {
 		// Try to clean up the project if adding to the set fails
-		r.client.client.Del(ctx, projectKey)
+		r.client.client.Del(ctx, []string{projectKey})
 		return nil, fmt.Errorf("failed to add project to list: %w", err)
 	}
 
@@ -58,7 +52,7 @@ func (r *ProjectRepository) Create(ctx context.Context, name, description string
 func (r *ProjectRepository) Get(ctx context.Context, id string) (*models.Project, error) {
 	// Get the project from Valkey
 	projectKey := GetProjectKey(id)
-	data, err := r.client.client.HGetAll(ctx, projectKey).Result()
+	data, err := r.client.client.HGetAll(ctx, projectKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get project: %w", err)
 	}
@@ -81,9 +75,9 @@ func (r *ProjectRepository) Get(ctx context.Context, id string) (*models.Project
 // Update updates an existing project
 func (r *ProjectRepository) Update(ctx context.Context, project *models.Project) error {
 	// Check if the project exists
-	exists, err := r.client.client.SIsMember(ctx, projectsListKey, project.ID).Result()
+	exists, err := r.client.client.SIsMember(ctx, projectsListKey, project.ID)
 	if err != nil {
-		return fmt.Errorf("failed to check if project exists: %w", err)
+		return fmt.Errorf("failed to get result: %w", err)
 	}
 
 	if !exists {
@@ -95,7 +89,7 @@ func (r *ProjectRepository) Update(ctx context.Context, project *models.Project)
 
 	// Store the updated project
 	projectKey := GetProjectKey(project.ID)
-	err = r.client.client.HSet(ctx, projectKey, project.ToMap()).Err()
+	_, err = r.client.client.HSet(ctx, projectKey, project.ToMap())
 	if err != nil {
 		return fmt.Errorf("failed to update project: %w", err)
 	}
@@ -106,9 +100,9 @@ func (r *ProjectRepository) Update(ctx context.Context, project *models.Project)
 // Delete removes a project and all its tasks
 func (r *ProjectRepository) Delete(ctx context.Context, id string) error {
 	// Check if the project exists
-	exists, err := r.client.client.SIsMember(ctx, projectsListKey, id).Result()
+	exists, err := r.client.client.SIsMember(ctx, projectsListKey, id)
 	if err != nil {
-		return fmt.Errorf("failed to check if project exists: %w", err)
+		return fmt.Errorf("failed to get result: %w", err)
 	}
 
 	if !exists {
@@ -117,35 +111,36 @@ func (r *ProjectRepository) Delete(ctx context.Context, id string) error {
 
 	// Get the project's tasks
 	projectTasksKey := GetProjectTasksKey(id)
-	taskIDs, err := r.client.client.ZRange(ctx, projectTasksKey, 0, -1).Result()
+	opts := options.NewRangeByIndexQuery(0, -1)
+	taskIDs, err := r.client.client.ZRange(ctx, projectTasksKey, opts)
 	if err != nil {
-		return fmt.Errorf("failed to get project tasks: %w", err)
+		return fmt.Errorf("failed to get result: %w", err)
 	}
 
 	// Delete all tasks
 	for _, taskID := range taskIDs {
 		taskKey := GetTaskKey(taskID)
-		err = r.client.client.Del(ctx, taskKey).Err()
+		_, err := r.client.client.Del(ctx, []string{taskKey})
 		if err != nil {
 			return fmt.Errorf("failed to delete task %s: %w", taskID, err)
 		}
 	}
 
-	// Delete the project tasks list
-	err = r.client.client.Del(ctx, projectTasksKey).Err()
+	// Delete the project's tasks list
+	_, err = r.client.client.Del(ctx, []string{projectTasksKey})
 	if err != nil {
 		return fmt.Errorf("failed to delete project tasks list: %w", err)
 	}
 
 	// Delete the project
 	projectKey := GetProjectKey(id)
-	err = r.client.client.Del(ctx, projectKey).Err()
+	_, err = r.client.client.Del(ctx, []string{projectKey})
 	if err != nil {
 		return fmt.Errorf("failed to delete project: %w", err)
 	}
 
-	// Remove the project from the projects list
-	err = r.client.client.SRem(ctx, projectsListKey, id).Err()
+	// Remove project from the projects list
+	_, err = r.client.client.SRem(ctx, projectsListKey, []string{id})
 	if err != nil {
 		return fmt.Errorf("failed to remove project from list: %w", err)
 	}
@@ -156,7 +151,7 @@ func (r *ProjectRepository) Delete(ctx context.Context, id string) error {
 // List returns all projects
 func (r *ProjectRepository) List(ctx context.Context) ([]*models.Project, error) {
 	// Get all project IDs
-	projectIDs, err := r.client.client.SMembers(ctx, projectsListKey).Result()
+	projectIDs, err := r.client.client.SMembers(ctx, projectsListKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get project list: %w", err)
 	}
@@ -164,7 +159,7 @@ func (r *ProjectRepository) List(ctx context.Context) ([]*models.Project, error)
 	projects := make([]*models.Project, 0, len(projectIDs))
 
 	// Get each project
-	for _, id := range projectIDs {
+	for id, _ := range projectIDs {
 		project, err := r.Get(ctx, id)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get project %s: %w", id, err)
