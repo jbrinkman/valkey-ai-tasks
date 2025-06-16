@@ -23,12 +23,12 @@ func NewProjectRepository(client *ValkeyClient) *ProjectRepository {
 }
 
 // Create adds a new project to the storage
-func (r *ProjectRepository) Create(ctx context.Context, name, description string) (*models.Project, error) {
+func (r *ProjectRepository) Create(ctx context.Context, applicationID, name, description string) (*models.Project, error) {
 	// Generate a unique ID for the project
 	id := uuid.New().String()
 
 	// Create a new project
-	project := models.NewProject(id, name, description)
+	project := models.NewProject(id, applicationID, name, description)
 
 	// Store the project in Valkey
 	projectKey := GetProjectKey(id)
@@ -43,6 +43,14 @@ func (r *ProjectRepository) Create(ctx context.Context, name, description string
 		// Try to clean up the project if adding to the set fails
 		r.client.client.Del(ctx, []string{projectKey})
 		return nil, fmt.Errorf("failed to add project to list: %w", err)
+	}
+
+	// Add project ID to the application-specific projects list
+	appProjectsKey := fmt.Sprintf("app:%s:projects", applicationID)
+	_, err = r.client.client.SAdd(ctx, appProjectsKey, []string{id})
+	if err != nil {
+		// Log the error but don't fail the operation
+		fmt.Printf("Warning: failed to add project to application list: %v\n", err)
 	}
 
 	return project, nil
@@ -145,6 +153,14 @@ func (r *ProjectRepository) Delete(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to remove project from list: %w", err)
 	}
 
+	// Remove project from the application-specific projects list
+	appProjectsKey := fmt.Sprintf("app:%s:projects", id)
+	_, err = r.client.client.SRem(ctx, appProjectsKey, []string{id})
+	if err != nil {
+		// Log the error but don't fail the operation
+		fmt.Printf("Warning: failed to remove project from application list: %v\n", err)
+	}
+
 	return nil
 }
 
@@ -164,6 +180,47 @@ func (r *ProjectRepository) List(ctx context.Context) ([]*models.Project, error)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get project %s: %w", id, err)
 		}
+		projects = append(projects, project)
+	}
+
+	return projects, nil
+}
+
+// ListByApplication retrieves all projects for a specific application
+func (r *ProjectRepository) ListByApplication(ctx context.Context, applicationID string) ([]*models.Project, error) {
+	// Get the list of project IDs for this application
+	appProjectsKey := fmt.Sprintf("app:%s:projects", applicationID)
+	projectIDs, err := r.client.client.SMembers(ctx, appProjectsKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get application project IDs: %w", err)
+	}
+
+	// If there are no projects, return an empty slice
+	if len(projectIDs) == 0 {
+		return []*models.Project{}, nil
+	}
+
+	projects := make([]*models.Project, 0, len(projectIDs))
+
+	// Retrieve each project
+	for _, id := range projectIDs {
+		projectKey := GetProjectKey(id)
+		projectData, err := r.client.client.HGetAll(ctx, projectKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get project %s: %w", id, err)
+		}
+
+		// Skip if the project doesn't exist
+		if len(projectData) == 0 {
+			continue
+		}
+
+		// Create a project from the data
+		project := &models.Project{}
+		if err := project.FromMap(projectData); err != nil {
+			return nil, fmt.Errorf("failed to parse project %s: %w", id, err)
+		}
+
 		projects = append(projects, project)
 	}
 

@@ -100,6 +100,10 @@ func (s *MCPServer) handleListFunctions(w http.ResponseWriter, r *http.Request) 
 				Parameters: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
+						"application_id": map[string]interface{}{
+							"type":        "string",
+							"description": "Application identifier to associate with this project",
+						},
 						"name": map[string]interface{}{
 							"type":        "string",
 							"description": "Project name",
@@ -109,7 +113,7 @@ func (s *MCPServer) handleListFunctions(w http.ResponseWriter, r *http.Request) 
 							"description": "Project description",
 						},
 					},
-					"required": []string{"name"},
+					"required": []string{"application_id", "name"},
 				},
 			},
 			{
@@ -132,6 +136,20 @@ func (s *MCPServer) handleListFunctions(w http.ResponseWriter, r *http.Request) 
 				Parameters: map[string]interface{}{
 					"type":       "object",
 					"properties": map[string]interface{}{},
+				},
+			},
+			{
+				Name:        "list_projects_by_application",
+				Description: "List all projects for a specific application",
+				Parameters: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"application_id": map[string]interface{}{
+							"type":        "string",
+							"description": "Application identifier to filter projects by",
+						},
+					},
+					"required": []string{"application_id"},
 				},
 			},
 			{
@@ -344,6 +362,8 @@ func (s *MCPServer) handleInvoke(w http.ResponseWriter, r *http.Request, pathPar
 		result, err = s.getProject(ctx, params)
 	case "list_projects":
 		result, err = s.listProjects(ctx)
+	case "list_projects_by_application":
+		result, err = s.listProjectsByApplication(ctx, params)
 	case "update_project":
 		result, err = s.updateProject(ctx, params)
 	case "delete_project":
@@ -387,6 +407,11 @@ func handleError(w http.ResponseWriter, err error, statusCode int) {
 
 // Function implementations for project operations
 func (s *MCPServer) createProject(ctx context.Context, params map[string]interface{}) (interface{}, error) {
+	applicationID, ok := params["application_id"].(string)
+	if !ok {
+		return nil, fmt.Errorf("application_id is required and must be a string")
+	}
+
 	name, ok := params["name"].(string)
 	if !ok {
 		return nil, fmt.Errorf("name is required and must be a string")
@@ -394,7 +419,7 @@ func (s *MCPServer) createProject(ctx context.Context, params map[string]interfa
 
 	description, _ := params["description"].(string) // Optional
 
-	project, err := s.projectRepo.Create(ctx, name, description)
+	project, err := s.projectRepo.Create(ctx, applicationID, name, description)
 	if err != nil {
 		return nil, err
 	}
@@ -418,6 +443,20 @@ func (s *MCPServer) getProject(ctx context.Context, params map[string]interface{
 
 func (s *MCPServer) listProjects(ctx context.Context) (interface{}, error) {
 	projects, err := s.projectRepo.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return projects, nil
+}
+
+func (s *MCPServer) listProjectsByApplication(ctx context.Context, params map[string]interface{}) (interface{}, error) {
+	applicationID, ok := params["application_id"].(string)
+	if !ok {
+		return nil, fmt.Errorf("application_id is required and must be a string")
+	}
+
+	projects, err := s.projectRepo.ListByApplication(ctx, applicationID)
 	if err != nil {
 		return nil, err
 	}

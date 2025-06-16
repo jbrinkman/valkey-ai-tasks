@@ -6,39 +6,43 @@ import (
 
 // Project represents a collection of related tasks
 type Project struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID            string    `json:"id"`
+	ApplicationID string    `json:"application_id"` // Added field for application association
+	Name          string    `json:"name"`
+	Description   string    `json:"description"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 // NewProject creates a new project with the given name and description
-func NewProject(id, name, description string) *Project {
+func NewProject(id, applicationID, name, description string) *Project {
 	now := time.Now()
 	return &Project{
-		ID:          id,
-		Name:        name,
-		Description: description,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:            id,
+		ApplicationID: applicationID,
+		Name:          name,
+		Description:   description,
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}
 }
 
 // ToMap converts the project to a map for storage in Valkey
 func (p *Project) ToMap() map[string]string {
 	return map[string]string{
-		"id":          p.ID,
-		"name":        p.Name,
-		"description": p.Description,
-		"created_at":  p.CreatedAt.Format(time.RFC3339),
-		"updated_at":  p.UpdatedAt.Format(time.RFC3339),
+		"id":             p.ID,
+		"application_id": p.ApplicationID,
+		"name":           p.Name,
+		"description":    p.Description,
+		"created_at":     p.CreatedAt.Format(time.RFC3339),
+		"updated_at":     p.UpdatedAt.Format(time.RFC3339),
 	}
 }
 
 // FromMap populates a project from a map retrieved from Valkey
 func (p *Project) FromMap(data map[string]string) error {
 	p.ID = data["id"]
+	p.ApplicationID = data["application_id"]
 	p.Name = data["name"]
 	p.Description = data["description"]
 
