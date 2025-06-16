@@ -203,7 +203,7 @@ func (r *ProjectRepository) ListByApplication(ctx context.Context, applicationID
 	projects := make([]*models.Project, 0, len(projectIDs))
 
 	// Retrieve each project
-	for _, id := range projectIDs {
+	for id := range projectIDs {
 		projectKey := GetProjectKey(id)
 		projectData, err := r.client.client.HGetAll(ctx, projectKey)
 		if err != nil {
