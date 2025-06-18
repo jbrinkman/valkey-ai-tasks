@@ -23,7 +23,7 @@ type MCPGoServer struct {
 func NewMCPGoServer(projectRepo storage.ProjectRepository, taskRepo storage.TaskRepository) *MCPGoServer {
 	// Create a new MCP server
 	s := server.NewMCPServer(
-		"Valkey Task Management",
+		"Valkey Feature Planning & Task Management",
 		"1.0.0",
 		server.WithToolCapabilities(true),
 		server.WithRecovery(),
@@ -45,10 +45,10 @@ func NewMCPGoServer(projectRepo storage.ProjectRepository, taskRepo storage.Task
 func (s *MCPGoServer) Start(port int) error {
 	log.Printf("Starting MCP server on port %d", port)
 
-	// Create HTTP server with the MCP server
-	httpServer := server.NewStreamableHTTPServer(s.server)
+	// // Create HTTP server with the MCP server
+	// httpServer := server.NewStreamableHTTPServer(s.server)
 
-	// Start HTTP server on the specified port
+	httpServer := server.NewSSEServer(s.server)
 	return httpServer.Start(fmt.Sprintf(":%d", port))
 }
 
@@ -76,17 +76,17 @@ func (s *MCPGoServer) registerTools() {
 
 func (s *MCPGoServer) registerCreateProjectTool() {
 	tool := mcp.NewTool("create_project",
-		mcp.WithDescription("Create a new project"),
+		mcp.WithDescription("Create a new project for planning and organizing a feature or initiative"),
 		mcp.WithString("application_id",
 			mcp.Required(),
 			mcp.Description("The application ID this project belongs to"),
 		),
 		mcp.WithString("name",
 			mcp.Required(),
-			mcp.Description("Project name"),
+			mcp.Description("Name of the feature or initiative being planned"),
 		),
 		mcp.WithString("description",
-			mcp.Description("Project description (optional)"),
+			mcp.Description("Detailed description of the feature's goals, requirements, and scope (optional)"),
 		),
 	)
 
@@ -120,7 +120,7 @@ func (s *MCPGoServer) registerCreateProjectTool() {
 
 func (s *MCPGoServer) registerGetProjectTool() {
 	tool := mcp.NewTool("get_project",
-		mcp.WithDescription("Get a project by ID"),
+		mcp.WithDescription("Retrieve details about a specific feature planning project"),
 		mcp.WithString("id",
 			mcp.Required(),
 			mcp.Description("Project ID"),
@@ -148,7 +148,7 @@ func (s *MCPGoServer) registerGetProjectTool() {
 
 func (s *MCPGoServer) registerListProjectsTool() {
 	tool := mcp.NewTool("list_projects",
-		mcp.WithDescription("List all projects"),
+		mcp.WithDescription("List all available feature planning projects"),
 	)
 
 	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -167,7 +167,7 @@ func (s *MCPGoServer) registerListProjectsTool() {
 
 func (s *MCPGoServer) registerListProjectsByApplicationTool() {
 	tool := mcp.NewTool("list_projects_by_application",
-		mcp.WithDescription("List projects by application ID"),
+		mcp.WithDescription("List all feature planning projects for a specific application"),
 		mcp.WithString("application_id",
 			mcp.Required(),
 			mcp.Description("Application ID to filter projects by"),
@@ -195,7 +195,7 @@ func (s *MCPGoServer) registerListProjectsByApplicationTool() {
 
 func (s *MCPGoServer) registerUpdateProjectTool() {
 	tool := mcp.NewTool("update_project",
-		mcp.WithDescription("Update an existing project"),
+		mcp.WithDescription("Update the details or scope of a feature planning project"),
 		mcp.WithString("id",
 			mcp.Required(),
 			mcp.Description("Project ID"),
@@ -247,7 +247,7 @@ func (s *MCPGoServer) registerUpdateProjectTool() {
 
 func (s *MCPGoServer) registerDeleteProjectTool() {
 	tool := mcp.NewTool("delete_project",
-		mcp.WithDescription("Delete a project"),
+		mcp.WithDescription("Remove a completed or cancelled feature planning project"),
 		mcp.WithString("id",
 			mcp.Required(),
 			mcp.Description("Project ID"),
@@ -273,24 +273,24 @@ func (s *MCPGoServer) registerDeleteProjectTool() {
 
 func (s *MCPGoServer) registerCreateTaskTool() {
 	tool := mcp.NewTool("create_task",
-		mcp.WithDescription("Create a new task"),
+		mcp.WithDescription("Create a new task as part of a feature implementation plan"),
 		mcp.WithString("project_id",
 			mcp.Required(),
 			mcp.Description("Project ID this task belongs to"),
 		),
 		mcp.WithString("title",
 			mcp.Required(),
-			mcp.Description("Task title"),
+			mcp.Description("Concise description of this implementation step"),
 		),
 		mcp.WithString("description",
-			mcp.Description("Task description (optional)"),
+			mcp.Description("Detailed explanation of what needs to be done, acceptance criteria, or implementation notes"),
 		),
 		mcp.WithString("status",
-			mcp.Description("Task status (optional, defaults to 'pending')"),
+			mcp.Description("Current implementation status of this task (optional, defaults to 'pending')"),
 			mcp.Enum("pending", "in_progress", "completed", "cancelled"),
 		),
 		mcp.WithString("priority",
-			mcp.Description("Task priority (optional, defaults to 'medium')"),
+			mcp.Description("Importance and urgency of this task in the overall feature implementation plan (optional, defaults to 'medium')"),
 			mcp.Enum("low", "medium", "high"),
 		),
 	)
@@ -326,7 +326,7 @@ func (s *MCPGoServer) registerCreateTaskTool() {
 
 func (s *MCPGoServer) registerGetTaskTool() {
 	tool := mcp.NewTool("get_task",
-		mcp.WithDescription("Get a task by ID"),
+		mcp.WithDescription("Retrieve details about a specific planned task"),
 		mcp.WithString("id",
 			mcp.Required(),
 			mcp.Description("Task ID"),
@@ -354,7 +354,7 @@ func (s *MCPGoServer) registerGetTaskTool() {
 
 func (s *MCPGoServer) registerListTasksByProjectTool() {
 	tool := mcp.NewTool("list_tasks_by_project",
-		mcp.WithDescription("List tasks by project ID"),
+		mcp.WithDescription("List all tasks in a feature implementation plan"),
 		mcp.WithString("project_id",
 			mcp.Required(),
 			mcp.Description("Project ID to filter tasks by"),
@@ -382,7 +382,7 @@ func (s *MCPGoServer) registerListTasksByProjectTool() {
 
 func (s *MCPGoServer) registerListTasksByStatusTool() {
 	tool := mcp.NewTool("list_tasks_by_status",
-		mcp.WithDescription("List tasks by status"),
+		mcp.WithDescription("Find tasks by their current status (pending, in progress, completed, cancelled)"),
 		mcp.WithString("status",
 			mcp.Required(),
 			mcp.Description("Task status to filter by"),
@@ -412,7 +412,7 @@ func (s *MCPGoServer) registerListTasksByStatusTool() {
 
 func (s *MCPGoServer) registerUpdateTaskTool() {
 	tool := mcp.NewTool("update_task",
-		mcp.WithDescription("Update an existing task"),
+		mcp.WithDescription("Update the details, status, or priority of a planned task"),
 		mcp.WithString("id",
 			mcp.Required(),
 			mcp.Description("Task ID"),
@@ -478,7 +478,7 @@ func (s *MCPGoServer) registerUpdateTaskTool() {
 
 func (s *MCPGoServer) registerDeleteTaskTool() {
 	tool := mcp.NewTool("delete_task",
-		mcp.WithDescription("Delete a task"),
+		mcp.WithDescription("Remove a task from a feature implementation plan"),
 		mcp.WithString("id",
 			mcp.Required(),
 			mcp.Description("Task ID"),
@@ -502,7 +502,7 @@ func (s *MCPGoServer) registerDeleteTaskTool() {
 
 func (s *MCPGoServer) registerReorderTaskTool() {
 	tool := mcp.NewTool("reorder_task",
-		mcp.WithDescription("Change the order of a task"),
+		mcp.WithDescription("Change the sequence of tasks in a feature implementation plan"),
 		mcp.WithString("id",
 			mcp.Required(),
 			mcp.Description("Task ID"),

@@ -56,7 +56,7 @@ func main() {
 
 	// Start the MCP server in a goroutine
 	go func() {
-		log.Printf("Starting MCP server on port %d", serverPort)
+		log.Printf("Initializing MCP server on port %d", serverPort)
 		if err := mcpServer.Start(serverPort); err != nil {
 			log.Fatalf("MCP server error: %v", err)
 		}
