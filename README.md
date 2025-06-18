@@ -43,6 +43,7 @@ valkey-ai-tasks/
 - Go 1.24 or later
 - Valkey server
 - Docker and Docker Compose (for containerized deployment)
+- GNU Make (for running Makefile commands)
 
 ### Installation
 
@@ -63,6 +64,46 @@ valkey-ai-tasks/
 3. Run the MCP server:
    ```bash
    go run cmd/mcpserver/main.go
+   ```
+
+### Running Tests
+
+The project includes a Makefile in the `go` directory with targets for running tests:
+
+1. Run all tests:
+   ```bash
+   cd go
+   make test
+   ```
+
+2. Run integration tests only:
+   ```bash
+   cd go
+   make integ-test
+   ```
+
+3. Run tests with a filter:
+   ```bash
+   cd go
+   make test filter=TestName
+   ```
+
+4. Run tests with verbose output:
+   ```bash
+   cd go
+   make test verbose=1
+   ```
+
+5. Generate test coverage report:
+   ```bash
+   cd go
+   make coverage
+   ```
+
+6. View all available Makefile targets:
+   ```bash
+   cd go
+   make help
    ```
 
 #### Docker Deployment
