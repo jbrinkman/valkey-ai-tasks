@@ -164,8 +164,8 @@ If accessing from outside the Docker network:
 
 AI agents can interact with this task management system through the MCP API. Here's an example of how an agent might use the API:
 
-1. The agent calls `/mcp/list_functions` to discover available functions
-2. The agent calls `/mcp/invoke/create_project` with parameters:
+1. The agent calls `/sse/list_functions` to discover available functions
+2. The agent calls `/sse/invoke/create_project` with parameters:
    ```json
    {
      "application_id": "my-app",
@@ -173,8 +173,29 @@ AI agents can interact with this task management system through the MCP API. Her
      "description": "Implement new features for the application"
    }
    ```
-3. The agent calls `/mcp/invoke/create_task` to add tasks to the project
-4. The agent calls `/mcp/invoke/update_task` to update task status as work progresses
+3. The agent can add tasks to the project using either:
+   - Individual task creation with `/sse/invoke/create_task`
+   - Bulk task creation with `/sse/invoke/bulk_create_tasks` for multiple tasks at once:
+     ```json
+     {
+       "project_id": "project-123",
+       "tasks_json": "[
+         {
+           \"title\": \"Task 1\",
+           \"description\": \"Description for task 1\",
+           \"priority\": \"high\",
+           \"status\": \"pending\"
+         },
+         {
+           \"title\": \"Task 2\",
+           \"description\": \"Description for task 2\",
+           \"priority\": \"medium\",
+           \"status\": \"pending\"
+         }
+       ]"
+     }
+     ```
+4. The agent calls `/sse/invoke/update_task` to update task status as work progresses
 
 ### Sample Agent Prompt
 

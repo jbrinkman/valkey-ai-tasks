@@ -15,6 +15,14 @@ type TaskRepository struct {
 	client *ValkeyClient
 }
 
+// TaskCreateInput represents the input data for creating a task
+type TaskCreateInput struct {
+	Title       string              `json:"title"`
+	Description string              `json:"description"`
+	Status      models.TaskStatus   `json:"status"`
+	Priority    models.TaskPriority `json:"priority"`
+}
+
 // NewTaskRepository creates a new task repository
 func NewTaskRepository(client *ValkeyClient) *TaskRepository {
 	return &TaskRepository{
@@ -296,6 +304,83 @@ func (r *TaskRepository) ReorderTask(ctx context.Context, taskID string, newOrde
 
 	// Reorder other tasks in the project
 	return r.reorderProjectTasks(ctx, task.ProjectID)
+}
+
+// CreateBulk adds multiple tasks to a project in a single operation
+func (r *TaskRepository) CreateBulk(ctx context.Context, projectID string, taskInputs []TaskCreateInput) ([]*models.Task, error) {
+	// Check if the project exists
+	exists, err := r.client.client.SIsMember(ctx, projectsListKey, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get result: %w", err)
+	}
+
+	if !exists {
+		return nil, fmt.Errorf("project not found: %s", projectID)
+	}
+
+	// Get the next order value for the first task
+	projectTasksKey := GetProjectTasksKey(projectID)
+	count, err := r.client.client.ZCard(ctx, projectTasksKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task count: %w", err)
+	}
+
+	// Create all tasks
+	createdTasks := make([]*models.Task, 0, len(taskInputs))
+	for i, input := range taskInputs {
+		// Generate a unique ID for the task
+		id := uuid.New().String()
+
+		// Set default values if not provided
+		priority := input.Priority
+		if priority == "" {
+			priority = models.TaskPriorityMedium
+		}
+
+		status := input.Status
+		if status == "" {
+			status = models.TaskStatusPending
+		}
+
+		description := input.Description
+		if description == "" {
+			description = "no description provided"
+		}
+
+		// Create a new task
+		task := models.NewTask(id, projectID, input.Title, description, priority)
+		task.Status = status
+		task.Order = int(count) + i
+
+		// Store the task in Valkey
+		taskKey := GetTaskKey(id)
+		_, err = r.client.client.HSet(ctx, taskKey, task.ToMap())
+		if err != nil {
+			// Try to clean up already created tasks
+			for _, createdTask := range createdTasks {
+				r.client.client.Del(ctx, []string{GetTaskKey(createdTask.ID)})
+				r.client.client.ZRem(ctx, projectTasksKey, []string{createdTask.ID})
+			}
+			return nil, fmt.Errorf("failed to store task: %w", err)
+		}
+
+		// Add task to the project's tasks list with its order as the score
+		_, err = r.client.client.ZAdd(ctx, projectTasksKey, map[string]float64{id: float64(task.Order)})
+		if err != nil {
+			// Try to clean up the task if adding to the sorted set fails
+			r.client.client.Del(ctx, []string{taskKey})
+			// Also clean up already created tasks
+			for _, createdTask := range createdTasks {
+				r.client.client.Del(ctx, []string{GetTaskKey(createdTask.ID)})
+				r.client.client.ZRem(ctx, projectTasksKey, []string{createdTask.ID})
+			}
+			return nil, fmt.Errorf("failed to add task to project: %w", err)
+		}
+
+		createdTasks = append(createdTasks, task)
+	}
+
+	return createdTasks, nil
 }
 
 // reorderProjectTasks updates the order of all tasks in a project to ensure they are sequential

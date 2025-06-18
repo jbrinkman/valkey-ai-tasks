@@ -64,6 +64,7 @@ func (s *MCPGoServer) registerTools() {
 
 	// Task tools
 	s.registerCreateTaskTool()
+	s.registerBulkCreateTasksTool() // Add the new bulk create tasks tool
 	s.registerGetTaskTool()
 	s.registerListTasksByProjectTool()
 	s.registerListTasksByStatusTool()
@@ -497,6 +498,129 @@ func (s *MCPGoServer) registerDeleteTaskTool() {
 		}
 
 		return mcp.NewToolResultText("Task deleted"), nil
+	})
+}
+
+func (s *MCPGoServer) registerBulkCreateTasksTool() {
+	tool := mcp.NewTool("bulk_create_tasks",
+		mcp.WithDescription("Create multiple tasks at once for a feature implementation plan"),
+		mcp.WithString("project_id",
+			mcp.Required(),
+			mcp.Description("Project ID these tasks belong to"),
+		),
+		mcp.WithString("tasks_json",
+			mcp.Required(),
+			mcp.Description("JSON string containing an array of task definitions, each containing title (required), description (optional), status (optional), and priority (optional)"),
+		),
+	)
+
+	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		// Extract project ID
+		projectID, err := request.RequireString("project_id")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		// Extract tasks JSON string
+		tasksJSON, err := request.RequireString("tasks_json")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		// Unmarshal into a slice of maps
+		var tasksArray []map[string]interface{}
+		err = json.Unmarshal([]byte(tasksJSON), &tasksArray)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to parse tasks JSON: %v", err)), nil
+		}
+
+		// Convert tasks array to TaskCreateInput slice
+		taskInputs := make([]storage.TaskCreateInput, 0, len(tasksArray))
+		for _, taskMap := range tasksArray {
+			// Extract title (required)
+			titleRaw, ok := taskMap["title"]
+			if !ok {
+				return mcp.NewToolResultError("Task title is required"), nil
+			}
+			
+			title, ok := titleRaw.(string)
+			if !ok || title == "" {
+				return mcp.NewToolResultError("Task title must be a non-empty string"), nil
+			}
+
+			// Extract optional fields
+			description := ""
+			if descRaw, ok := taskMap["description"]; ok {
+				if desc, ok := descRaw.(string); ok {
+					description = desc
+				}
+			}
+
+			statusStr := ""
+			if statusRaw, ok := taskMap["status"]; ok {
+				if status, ok := statusRaw.(string); ok {
+					statusStr = status
+				}
+			}
+
+			priorityStr := ""
+			if priorityRaw, ok := taskMap["priority"]; ok {
+				if priority, ok := priorityRaw.(string); ok {
+					priorityStr = priority
+				}
+			}
+
+			// Validate status if provided
+			if statusStr != "" {
+				validStatus := false
+				for _, s := range []string{"pending", "in_progress", "completed", "cancelled"} {
+					if statusStr == s {
+						validStatus = true
+						break
+					}
+				}
+				if !validStatus {
+					return mcp.NewToolResultError(fmt.Sprintf("Invalid status: %s", statusStr)), nil
+				}
+			}
+
+			// Validate priority if provided
+			if priorityStr != "" {
+				validPriority := false
+				for _, p := range []string{"low", "medium", "high"} {
+					if priorityStr == p {
+						validPriority = true
+						break
+					}
+				}
+				if !validPriority {
+					return mcp.NewToolResultError(fmt.Sprintf("Invalid priority: %s", priorityStr)), nil
+				}
+			}
+
+			// Create task input
+			taskInput := storage.TaskCreateInput{
+				Title:       title,
+				Description: description,
+				Status:      models.TaskStatus(statusStr),
+				Priority:    models.TaskPriority(priorityStr),
+			}
+
+			taskInputs = append(taskInputs, taskInput)
+		}
+
+		// Create tasks in bulk
+		createdTasks, err := s.taskRepo.CreateBulk(ctx, projectID, taskInputs)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to create tasks: %v", err)), nil
+		}
+
+		// Return created tasks
+		tasksJson, err := json.Marshal(createdTasks)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal tasks: %v", err)), nil
+		}
+		return mcp.NewToolResultText(string(tasksJson)), nil
 	})
 }
 
