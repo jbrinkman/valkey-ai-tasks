@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -24,7 +23,11 @@ func main() {
 	}
 	valkeyUsername := getEnv("VALKEY_USERNAME", "")
 	valkeyPassword := getEnv("VALKEY_PASSWORD", "")
-	serverPort := getEnv("SERVER_PORT", "8080")
+	serverPortStr := getEnv("SERVER_PORT", "8080")
+	serverPort, err := strconv.Atoi(serverPortStr)
+	if err != nil {
+		log.Fatalf("Invalid SERVER_PORT: %v", err)
+	}
 
 	// Initialize Valkey client
 	valkeyClient, err := storage.NewValkeyClient(valkeyHost, valkeyPort, valkeyUsername, valkeyPassword)
@@ -44,37 +47,27 @@ func main() {
 	projectRepo := storage.NewProjectRepository(valkeyClient)
 	taskRepo := storage.NewTaskRepository(valkeyClient)
 
-	// Create MCP server handler
-	mcpHandler := mcp.NewMCPServer(projectRepo, taskRepo)
+	// Create MCP server using the mark3labs/mcp-go library
+	mcpServer := mcp.NewMCPGoServer(*projectRepo, *taskRepo)
 
-	// Set up HTTP server
-	server := &http.Server{
-		Addr:    ":" + serverPort,
-		Handler: mcpHandler,
-	}
+	// Set up signal handling for graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-	// Start server in a goroutine
+	// Start the MCP server in a goroutine
 	go func() {
-		log.Printf("MCP server starting on port %s", serverPort)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server error: %v", err)
+		log.Printf("Starting MCP server on port %d", serverPort)
+		if err := mcpServer.Start(serverPort); err != nil {
+			log.Fatalf("MCP server error: %v", err)
 		}
 	}()
 
-	// Set up graceful shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	// Wait for interrupt signal
 	<-quit
 	log.Println("Shutting down server...")
 
-	// Create shutdown context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	// Shutdown server
-	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
-	}
+	// Give the server some time to finish ongoing requests
+	time.Sleep(2 * time.Second)
 
 	log.Println("Server exited properly")
 }

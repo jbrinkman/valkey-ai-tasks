@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jbrinkman/valkey-ai-tasks/go/internal/models"
 	"github.com/jbrinkman/valkey-ai-tasks/go/internal/storage"
@@ -47,22 +48,40 @@ func (s *MCPServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/")
 	pathParts := strings.Split(path, "/")
 
+	log.Printf("Url: %s", r.RequestURI)
+	log.Printf("Method: %s", r.Method)
+	log.Printf("Path parts: %v", pathParts)
 	if len(pathParts) == 0 {
 		handleError(w, fmt.Errorf("invalid path"), http.StatusBadRequest)
 		return
 	}
 
 	// Handle MCP protocol endpoints
-	switch pathParts[0] {
-	case "mcp":
+	if pathParts[0] == "mcp" {
+		// Check if this is an SSE request
+		if len(pathParts) >= 2 && pathParts[1] == "sse" {
+			s.handleSSE(w, r)
+			return
+		}
+
+		// Handle other MCP requests
 		s.handleMCPRequest(w, r, pathParts[1:])
-	default:
-		handleError(w, fmt.Errorf("unknown endpoint: %s", pathParts[0]), http.StatusNotFound)
+		return
 	}
+
+	// If we get here, it's an unknown endpoint
+	handleError(w, fmt.Errorf("unknown endpoint: %s", pathParts[0]), http.StatusNotFound)
 }
 
 // handleMCPRequest processes MCP protocol requests
 func (s *MCPServer) handleMCPRequest(w http.ResponseWriter, r *http.Request, pathParts []string) {
+	// If it's a GET request to the root /mcp endpoint, return the list of functions
+	if len(pathParts) == 0 && r.Method == http.MethodGet {
+		s.handleListFunctions(w, r)
+		return
+	}
+
+	// Otherwise, handle specific paths
 	if len(pathParts) == 0 {
 		handleError(w, fmt.Errorf("invalid MCP path"), http.StatusBadRequest)
 		return
@@ -690,4 +709,144 @@ func (s *MCPServer) reorderTask(ctx context.Context, params map[string]interface
 	}
 
 	return task, nil
+}
+
+// handleSSE handles Server-Sent Events connections for the MCP protocol
+func (s *MCPServer) handleSSE(w http.ResponseWriter, r *http.Request) {
+	log.Printf("SSE connection attempt from %s", r.RemoteAddr)
+
+	// Set headers for SSE
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	// Create a channel for client disconnection detection
+	clientGone := r.Context().Done()
+
+	// Send initial connection established message - this is critical
+	// Format must be exactly as expected by MCP clients
+	fmt.Fprintf(w, "data: {\"type\":\"connection_established\"}\n\n")
+	w.(http.Flusher).Flush()
+
+	log.Printf("SSE connection established with %s", r.RemoteAddr)
+
+	// If this is a POST request, handle function invocation
+	if r.Method == http.MethodPost {
+		var requestData map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
+			log.Printf("Error parsing SSE request body: %v", err)
+			sendSSEError(w, "invalid_request", "Failed to parse request body", http.StatusBadRequest)
+			return
+		}
+
+		// Extract function name and parameters
+		functionName, ok := requestData["name"].(string)
+		if !ok {
+			log.Printf("Missing function name in SSE request")
+			sendSSEError(w, "invalid_request", "Missing or invalid function name", http.StatusBadRequest)
+			return
+		}
+
+		log.Printf("SSE function call: %s", functionName)
+
+		// Get parameters (if any)
+		var params map[string]interface{}
+		if p, ok := requestData["parameters"].(map[string]interface{}); ok {
+			params = p
+		} else {
+			params = make(map[string]interface{})
+		}
+
+		// Generate a request ID
+		requestID := fmt.Sprintf("req_%d", time.Now().UnixNano())
+
+		// Execute the appropriate function based on the name
+		var result interface{}
+		var err error
+
+		switch functionName {
+		case "create_project":
+			result, err = s.createProject(r.Context(), params)
+		case "get_project":
+			result, err = s.getProject(r.Context(), params)
+		case "list_projects":
+			result, err = s.listProjects(r.Context())
+		case "list_projects_by_application":
+			result, err = s.listProjectsByApplication(r.Context(), params)
+		case "update_project":
+			result, err = s.updateProject(r.Context(), params)
+		case "delete_project":
+			result, err = s.deleteProject(r.Context(), params)
+		case "create_task":
+			result, err = s.createTask(r.Context(), params)
+		case "get_task":
+			result, err = s.getTask(r.Context(), params)
+		case "list_tasks_by_project":
+			result, err = s.listTasksByProject(r.Context(), params)
+		case "list_tasks_by_status":
+			result, err = s.listTasksByStatus(r.Context(), params)
+		case "update_task":
+			result, err = s.updateTask(r.Context(), params)
+		case "delete_task":
+			result, err = s.deleteTask(r.Context(), params)
+		case "reorder_task":
+			result, err = s.reorderTask(r.Context(), params)
+		default:
+			log.Printf("Unknown function in SSE request: %s", functionName)
+			sendSSEError(w, "unknown_function", fmt.Sprintf("Unknown function: %s", functionName), http.StatusBadRequest)
+			return
+		}
+
+		if err != nil {
+			log.Printf("Error executing function %s: %v", functionName, err)
+			sendSSEError(w, "execution_error", err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Send the result
+		responseData := map[string]interface{}{
+			"id":     requestID,
+			"result": result,
+		}
+		responseJSON, _ := json.Marshal(responseData)
+
+		fmt.Fprintf(w, "data: %s\n\n", responseJSON)
+		w.(http.Flusher).Flush()
+		log.Printf("SSE function result sent: %s", functionName)
+	}
+
+	// Keep the connection alive with periodic heartbeats
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	heartbeatCount := 0
+	for {
+		select {
+		case <-ticker.C:
+			// Send heartbeat
+			heartbeatCount++
+			fmt.Fprintf(w, "data: {\"type\":\"heartbeat\",\"count\":%d}\n\n", heartbeatCount)
+			w.(http.Flusher).Flush()
+			log.Printf("SSE heartbeat sent (%d)", heartbeatCount)
+		case <-clientGone:
+			// Client disconnected
+			log.Printf("SSE client disconnected: %s", r.RemoteAddr)
+			return
+		}
+	}
+}
+
+// sendSSEError sends an error event over the SSE connection
+func sendSSEError(w http.ResponseWriter, errorType, message string, statusCode int) {
+	errorJSON, _ := json.Marshal(map[string]interface{}{
+		"error": map[string]interface{}{
+			"type":    errorType,
+			"message": message,
+			"code":    statusCode,
+		},
+	})
+	fmt.Fprintf(w, "data: %s\n\n", errorJSON)
+	w.(http.Flusher).Flush()
+	log.Printf("SSE error sent: %s - %s", errorType, message)
 }

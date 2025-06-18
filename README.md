@@ -122,17 +122,15 @@ The MCP server exposes the following endpoints:
 
 ### Local MCP Configuration
 
-To configure an AI agent to use the local MCP server:
+To configure an AI agent to use the local MCP server, add the following to your `~/.codeium/windsurf/mcp_config.json` file:
 
 ```json
 {
-  "mcp_servers": [
-    {
-      "name": "valkey-tasks",
-      "url": "http://localhost:8080/mcp",
-      "description": "Valkey Task Management MCP Server"
+  "mcpServers": {
+    "valkey-tasks": {
+      "serverUrl": "http://localhost:8080/mcp"
     }
-  ]
+  }
 }
 ```
 
@@ -142,13 +140,11 @@ When running in Docker, use the container name as the hostname:
 
 ```json
 {
-  "mcp_servers": [
-    {
-      "name": "valkey-tasks",
-      "url": "http://valkey-mcp-server:8080/mcp",
-      "description": "Valkey Task Management MCP Server"
+  "mcpServers": {
+    "valkey-tasks": {
+      "serverUrl": "http://valkey-mcp-server:8080/mcp"
     }
-  ]
+  }
 }
 ```
 
@@ -156,13 +152,11 @@ If accessing from outside the Docker network:
 
 ```json
 {
-  "mcp_servers": [
-    {
-      "name": "valkey-tasks",
-      "url": "http://localhost:8080/mcp",
-      "description": "Valkey Task Management MCP Server"
+  "mcpServers": {
+    "valkey-tasks": {
+      "serverUrl": "http://localhost:8080/mcp"
     }
-  ]
+  }
 }
 ```
 
