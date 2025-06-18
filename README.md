@@ -128,7 +128,7 @@ To configure an AI agent to use the local MCP server, add the following to your 
 {
   "mcpServers": {
     "valkey-tasks": {
-      "serverUrl": "http://localhost:8080/mcp"
+      "serverUrl": "http://localhost:8080/sse"
     }
   }
 }
@@ -142,7 +142,7 @@ When running in Docker, use the container name as the hostname:
 {
   "mcpServers": {
     "valkey-tasks": {
-      "serverUrl": "http://valkey-mcp-server:8080/mcp"
+      "serverUrl": "http://valkey-mcp-server:8080/sse
     }
   }
 }
@@ -154,7 +154,7 @@ If accessing from outside the Docker network:
 {
   "mcpServers": {
     "valkey-tasks": {
-      "serverUrl": "http://localhost:8080/mcp"
+      "serverUrl": "http://localhost:8080/sse"
     }
   }
 }
