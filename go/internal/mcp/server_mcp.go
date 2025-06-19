@@ -197,6 +197,17 @@ func (s *MCPGoServer) registerListPlansByApplicationTool() {
 	})
 }
 
+// validatePlanStatus checks if the provided status is a valid plan status
+func validatePlanStatus(status models.PlanStatus) error {
+	if status != models.PlanStatusNew &&
+		status != models.PlanStatusInProgress &&
+		status != models.PlanStatusCompleted &&
+		status != models.PlanStatusCancelled {
+		return fmt.Errorf("invalid status: %s", status)
+	}
+	return nil
+}
+
 func (s *MCPGoServer) registerUpdatePlanStatusTool() {
 	tool := mcp.NewTool("update_plan_status",
 		mcp.WithDescription("Update the status of a plan"),
@@ -223,11 +234,8 @@ func (s *MCPGoServer) registerUpdatePlanStatusTool() {
 
 		// Validate status
 		status := models.PlanStatus(statusStr)
-		if status != models.PlanStatusNew &&
-			status != models.PlanStatusInProgress &&
-			status != models.PlanStatusCompleted &&
-			status != models.PlanStatusCancelled {
-			return mcp.NewToolResultError(fmt.Sprintf("Invalid status: %s", statusStr)), nil
+		if err := validatePlanStatus(status); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 
 		// Get the existing plan
@@ -347,11 +355,8 @@ func (s *MCPGoServer) registerListPlansByStatusTool() {
 
 		// Validate status
 		status := models.PlanStatus(statusStr)
-		if status != models.PlanStatusNew &&
-			status != models.PlanStatusInProgress &&
-			status != models.PlanStatusCompleted &&
-			status != models.PlanStatusCancelled {
-			return mcp.NewToolResultError(fmt.Sprintf("Invalid status: %s", statusStr)), nil
+		if err := validatePlanStatus(status); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 
 		// Get plans with the specified status
