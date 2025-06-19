@@ -44,11 +44,14 @@ func main() {
 	log.Printf("Connected to Valkey at %s:%d", valkeyHost, valkeyPort)
 
 	// Initialize repositories
-	projectRepo := storage.NewProjectRepository(valkeyClient)
+	planRepo := storage.NewPlanRepository(valkeyClient)
 	taskRepo := storage.NewTaskRepository(valkeyClient)
 
 	// Create MCP server using the mark3labs/mcp-go library
-	mcpServer := mcp.NewMCPGoServer(*projectRepo, *taskRepo)
+	// Convert concrete types to interfaces
+	var planRepoInterface storage.PlanRepositoryInterface = planRepo
+	var taskRepoInterface storage.TaskRepositoryInterface = taskRepo
+	mcpServer := mcp.NewMCPGoServer(planRepoInterface, taskRepoInterface)
 
 	// Set up signal handling for graceful shutdown
 	quit := make(chan os.Signal, 1)

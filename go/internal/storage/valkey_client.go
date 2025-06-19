@@ -46,16 +46,26 @@ func (vc *ValkeyClient) Close() error {
 
 // Keys used for storing data in Valkey
 const (
-	// Project keys
+	// Plan keys (formerly Project)
+	planKeyPrefix = "plan:"
+	plansListKey  = "plans"
+	// Legacy project keys (kept for backward compatibility)
 	projectKeyPrefix = "project:"
 	projectsListKey  = "projects"
 
 	// Task keys
-	taskKeyPrefix      = "task:"
+	taskKeyPrefix   = "task:"
+	planTasksPrefix = "plan_tasks:"
+	// Legacy project tasks keys (kept for backward compatibility)
 	projectTasksPrefix = "project_tasks:"
 )
 
-// GetProjectKey returns the key for a specific project
+// GetPlanKey returns the key for a specific plan
+func GetPlanKey(planID string) string {
+	return planKeyPrefix + planID
+}
+
+// GetProjectKey returns the key for a specific project (legacy)
 func GetProjectKey(projectID string) string {
 	return projectKeyPrefix + projectID
 }
@@ -65,7 +75,12 @@ func GetTaskKey(taskID string) string {
 	return taskKeyPrefix + taskID
 }
 
-// GetProjectTasksKey returns the key for a project's tasks list
+// GetPlanTasksKey returns the key for a plan's tasks list
+func GetPlanTasksKey(planID string) string {
+	return planTasksPrefix + planID
+}
+
+// GetProjectTasksKey returns the key for a project's tasks list (legacy)
 func GetProjectTasksKey(projectID string) string {
 	return projectTasksPrefix + projectID
 }

@@ -1,6 +1,6 @@
 # Testing Directory Structure
 
-This directory contains the testing infrastructure for the valkey-ai-tasks project.
+This directory contains the testing infrastructure for the valkey-ai-tasks application.
 
 ## Directory Structure
 

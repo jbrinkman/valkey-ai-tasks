@@ -28,22 +28,22 @@ func (m *mockToolRegistry) AddTool(tool mcp.Tool, handler func(ctx context.Conte
 
 // testMCPGoServer is a test-specific version of MCPGoServer that uses interfaces instead of concrete types
 type testMCPGoServer struct {
-	server      *mockToolRegistry
-	projectRepo storage.ProjectRepositoryInterface
-	taskRepo    storage.TaskRepositoryInterface
+	server   *mockToolRegistry
+	planRepo storage.PlanRepositoryInterface
+	taskRepo storage.TaskRepositoryInterface
 }
 
 // registerBulkCreateTasksTool implements the same method as MCPGoServer for testing
 func (s *testMCPGoServer) registerBulkCreateTasksTool() {
 	tool := mcp.NewTool("bulk_create_tasks",
 		mcp.WithDescription("Create multiple tasks at once for a feature implementation plan"),
-		mcp.WithString("project_id", mcp.Required(), mcp.Description("Project ID these tasks belong to")),
+		mcp.WithString("plan_id", mcp.Required(), mcp.Description("Plan ID these tasks belong to")),
 		mcp.WithString("tasks_json", mcp.Required(), mcp.Description("JSON string containing an array of task definitions")),
 	)
 
 	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		// Extract project_id parameter
-		projectID, err := request.RequireString("project_id")
+		// Extract plan_id parameter
+		planID, err := request.RequireString("plan_id")
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -60,10 +60,10 @@ func (s *testMCPGoServer) registerBulkCreateTasksTool() {
 			return mcp.NewToolResultError(fmt.Sprintf("Invalid tasks JSON: %v", err)), nil
 		}
 
-		// Verify the project exists
-		project, err := s.projectRepo.Get(ctx, projectID)
+		// Verify the plan exists
+		plan, err := s.planRepo.Get(ctx, planID)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Project not found: %v", err)), nil
+			return mcp.NewToolResultError(fmt.Sprintf("Plan not found: %v", err)), nil
 		}
 
 		// Convert to TaskCreateInput
@@ -110,7 +110,7 @@ func (s *testMCPGoServer) registerBulkCreateTasksTool() {
 		}
 
 		// Create the tasks
-		tasks, err := s.taskRepo.CreateBulk(ctx, project.ID, createInputs)
+		tasks, err := s.taskRepo.CreateBulk(ctx, plan.ID, createInputs)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to create tasks: %v", err)), nil
 		}
@@ -127,19 +127,19 @@ func (s *testMCPGoServer) registerBulkCreateTasksTool() {
 
 func TestRegisterBulkCreateTasksTool(t *testing.T) {
 	// Create mock repositories
-	mockProjectRepo := mocks.NewMockProjectRepository()
-	mockTaskRepo := mocks.NewMockTaskRepository(mockProjectRepo)
+	mockPlanRepo := mocks.NewMockPlanRepository()
+	mockTaskRepo := mocks.NewMockTaskRepository(mockPlanRepo)
 
-	// Create a test project
+	// Create a test plan
 	ctx := context.Background()
-	project, err := mockProjectRepo.Create(ctx, "app-123", "Test Project", "Test Project Description")
+	plan, err := mockPlanRepo.Create(ctx, "app-123", "Test Plan", "Test Plan Description")
 	require.NoError(t, err)
-	require.NotNil(t, project)
+	require.NotNil(t, plan)
 
 	// Create a test MCP server with our repositories
 	server := &testMCPGoServer{
-		projectRepo: mockProjectRepo,
-		taskRepo:    mockTaskRepo,
+		planRepo: mockPlanRepo,
+		taskRepo: mockTaskRepo,
 	}
 
 	// Create a mock tool registry to capture the registered tool
@@ -172,7 +172,7 @@ func TestRegisterBulkCreateTasksTool(t *testing.T) {
 		Params: mcp.CallToolParams{
 			Name: "bulk_create_tasks",
 			Arguments: map[string]interface{}{
-				"project_id": project.ID,
+				"plan_id":    plan.ID,
 				"tasks_json": tasksJSON,
 			},
 		},
@@ -225,20 +225,20 @@ func TestRegisterBulkCreateTasksTool(t *testing.T) {
 	assert.Equal(t, models.TaskPriorityLow, tasks[2].Priority)
 
 	// Verify the tasks were stored in the repository
-	storedTasks, err := mockTaskRepo.ListByProject(ctx, project.ID)
+	storedTasks, err := mockTaskRepo.ListByPlan(ctx, plan.ID)
 	require.NoError(t, err)
 	assert.Len(t, storedTasks, 3)
 }
 
 func TestRegisterBulkCreateTasksToolErrors(t *testing.T) {
 	// Create mock repositories
-	mockProjectRepo := mocks.NewMockProjectRepository()
-	mockTaskRepo := mocks.NewMockTaskRepository(mockProjectRepo)
+	mockPlanRepo := mocks.NewMockPlanRepository()
+	mockTaskRepo := mocks.NewMockTaskRepository(mockPlanRepo)
 
 	// Create a test MCP server with our repositories
 	server := &testMCPGoServer{
-		projectRepo: mockProjectRepo,
-		taskRepo:    mockTaskRepo,
+		planRepo: mockPlanRepo,
+		taskRepo: mockTaskRepo,
 	}
 
 	// Create a mock tool registry to capture the registered tool
@@ -256,8 +256,8 @@ func TestRegisterBulkCreateTasksToolErrors(t *testing.T) {
 	// Register the bulk create tasks tool
 	server.registerBulkCreateTasksTool()
 
-	// Test case 1: Missing project_id
-	t.Run("MissingProjectID", func(t *testing.T) {
+	// Test case 1: Missing plan_id
+	t.Run("MissingPlanID", func(t *testing.T) {
 		request := mcp.CallToolRequest{
 			Params: mcp.CallToolParams{
 				Name: "bulk_create_tasks",
@@ -281,7 +281,7 @@ func TestRegisterBulkCreateTasksToolErrors(t *testing.T) {
 		default:
 			require.Fail(t, "Expected TextContent, got %T", result.Content[0])
 		}
-		assert.Contains(t, textContent, "required argument \"project_id\" not found")
+		assert.Contains(t, textContent, "required argument \"plan_id\" not found")
 	})
 
 	// Test case 2: Missing tasks_json
@@ -290,7 +290,7 @@ func TestRegisterBulkCreateTasksToolErrors(t *testing.T) {
 			Params: mcp.CallToolParams{
 				Name: "bulk_create_tasks",
 				Arguments: map[string]interface{}{
-					"project_id": "project-123",
+					"plan_id": "plan-123",
 				},
 			},
 		}
@@ -318,7 +318,7 @@ func TestRegisterBulkCreateTasksToolErrors(t *testing.T) {
 			Params: mcp.CallToolParams{
 				Name: "bulk_create_tasks",
 				Arguments: map[string]interface{}{
-					"project_id": "project-123",
+					"plan_id":    "plan-123",
 					"tasks_json": "not valid json",
 				},
 			},
@@ -341,13 +341,13 @@ func TestRegisterBulkCreateTasksToolErrors(t *testing.T) {
 		assert.Contains(t, textContent, "Invalid tasks JSON")
 	})
 
-	// Test case 4: Project not found
-	t.Run("ProjectNotFound", func(t *testing.T) {
+	// Test case 4: Plan not found
+	t.Run("PlanNotFound", func(t *testing.T) {
 		request := mcp.CallToolRequest{
 			Params: mcp.CallToolParams{
 				Name: "bulk_create_tasks",
 				Arguments: map[string]interface{}{
-					"project_id": "non-existent-project",
+					"plan_id":    "non-existent-plan",
 					"tasks_json": `[{"title": "Task 1"}]`,
 				},
 			},
@@ -367,21 +367,21 @@ func TestRegisterBulkCreateTasksToolErrors(t *testing.T) {
 		default:
 			require.Fail(t, "Expected TextContent, got %T", result.Content[0])
 		}
-		assert.Contains(t, textContent, "Project not found")
+		assert.Contains(t, textContent, "Plan not found")
 	})
 
 	// Test case 5: Missing task title
 	t.Run("MissingTaskTitle", func(t *testing.T) {
-		// Create a test project
+		// Create a test plan
 		ctx := context.Background()
-		project, err := mockProjectRepo.Create(ctx, "app-456", "Test Project", "Test Project Description")
+		plan, err := mockPlanRepo.Create(ctx, "app-456", "Test Plan", "Test Plan Description")
 		require.NoError(t, err)
 		
 		request := mcp.CallToolRequest{
 			Params: mcp.CallToolParams{
 				Name: "bulk_create_tasks",
 				Arguments: map[string]interface{}{
-					"project_id": project.ID,
+					"plan_id":    plan.ID,
 					"tasks_json": `[{"description": "Missing title"}]`,
 				},
 			},

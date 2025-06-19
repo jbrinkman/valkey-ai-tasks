@@ -50,7 +50,7 @@ func TestTask(projectID string, title string, description string) *models.Task {
 
 	return &models.Task{
 		ID:          uuid.New().String(),
-		ProjectID:   projectID,
+		PlanID:      projectID,
 		Title:       title,
 		Description: description,
 		Status:      models.TaskStatusPending,

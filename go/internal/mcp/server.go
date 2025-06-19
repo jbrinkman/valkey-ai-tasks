@@ -15,15 +15,15 @@ import (
 
 // MCPServer implements the Model Context Protocol server for task management
 type MCPServer struct {
-	projectRepo *storage.ProjectRepository
-	taskRepo    *storage.TaskRepository
+	planRepo *storage.PlanRepository
+	taskRepo *storage.TaskRepository
 }
 
 // NewMCPServer creates a new MCP server with the given repositories
-func NewMCPServer(projectRepo *storage.ProjectRepository, taskRepo *storage.TaskRepository) *MCPServer {
+func NewMCPServer(planRepo *storage.PlanRepository, taskRepo *storage.TaskRepository) *MCPServer {
 	return &MCPServer{
-		projectRepo: projectRepo,
-		taskRepo:    taskRepo,
+		planRepo: planRepo,
+		taskRepo: taskRepo,
 	}
 }
 
@@ -438,12 +438,12 @@ func (s *MCPServer) createProject(ctx context.Context, params map[string]interfa
 
 	description, _ := params["description"].(string) // Optional
 
-	project, err := s.projectRepo.Create(ctx, applicationID, name, description)
+	plan, err := s.planRepo.Create(ctx, applicationID, name, description)
 	if err != nil {
 		return nil, err
 	}
 
-	return project, nil
+	return plan, nil
 }
 
 func (s *MCPServer) getProject(ctx context.Context, params map[string]interface{}) (interface{}, error) {
@@ -452,16 +452,16 @@ func (s *MCPServer) getProject(ctx context.Context, params map[string]interface{
 		return nil, fmt.Errorf("id is required and must be a string")
 	}
 
-	project, err := s.projectRepo.Get(ctx, id)
+	plan, err := s.planRepo.Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	return project, nil
+	return plan, nil
 }
 
 func (s *MCPServer) listProjects(ctx context.Context) (interface{}, error) {
-	projects, err := s.projectRepo.List(ctx)
+	projects, err := s.planRepo.List(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -475,7 +475,7 @@ func (s *MCPServer) listProjectsByApplication(ctx context.Context, params map[st
 		return nil, fmt.Errorf("application_id is required and must be a string")
 	}
 
-	projects, err := s.projectRepo.ListByApplication(ctx, applicationID)
+	projects, err := s.planRepo.ListByApplication(ctx, applicationID)
 	if err != nil {
 		return nil, err
 	}
@@ -489,28 +489,28 @@ func (s *MCPServer) updateProject(ctx context.Context, params map[string]interfa
 		return nil, fmt.Errorf("id is required and must be a string")
 	}
 
-	// Get the existing project
-	project, err := s.projectRepo.Get(ctx, id)
+	// Get the existing plan
+	plan, err := s.planRepo.Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
 	// Update fields if provided
 	if name, ok := params["name"].(string); ok {
-		project.Name = name
+		plan.Name = name
 	}
 
 	if description, ok := params["description"].(string); ok {
-		project.Description = description
+		plan.Description = description
 	}
 
-	// Update the project
-	err = s.projectRepo.Update(ctx, project)
+	// Update the plan
+	err = s.planRepo.Update(ctx, plan)
 	if err != nil {
 		return nil, err
 	}
 
-	return project, nil
+	return plan, nil
 }
 
 func (s *MCPServer) deleteProject(ctx context.Context, params map[string]interface{}) (interface{}, error) {
@@ -519,12 +519,12 @@ func (s *MCPServer) deleteProject(ctx context.Context, params map[string]interfa
 		return nil, fmt.Errorf("id is required and must be a string")
 	}
 
-	err := s.projectRepo.Delete(ctx, id)
+	err := s.planRepo.Delete(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	return map[string]string{"status": "success", "message": "Project deleted"}, nil
+	return map[string]string{"status": "success", "message": "Plan deleted"}, nil
 }
 
 // Function implementations for task operations
@@ -576,12 +576,12 @@ func (s *MCPServer) getTask(ctx context.Context, params map[string]interface{}) 
 }
 
 func (s *MCPServer) listTasksByProject(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-	projectID, ok := params["project_id"].(string)
+	planID, ok := params["plan_id"].(string)
 	if !ok {
-		return nil, fmt.Errorf("project_id is required and must be a string")
+		return nil, fmt.Errorf("plan_id is required and must be a string")
 	}
 
-	tasks, err := s.taskRepo.ListByProject(ctx, projectID)
+	tasks, err := s.taskRepo.ListByPlan(ctx, planID)
 	if err != nil {
 		return nil, err
 	}
@@ -653,13 +653,13 @@ func (s *MCPServer) updateTask(ctx context.Context, params map[string]interface{
 		task.Priority = priority
 	}
 
-	if projectID, ok := params["project_id"].(string); ok && projectID != task.ProjectID {
-		// Check if the new project exists
-		_, err := s.projectRepo.Get(ctx, projectID)
+	if planID, ok := params["plan_id"].(string); ok && planID != task.PlanID {
+		// Check if the new plan exists
+		_, err := s.planRepo.Get(ctx, planID)
 		if err != nil {
-			return nil, fmt.Errorf("new project not found: %s", projectID)
+			return nil, fmt.Errorf("new plan not found: %s", planID)
 		}
-		task.ProjectID = projectID
+		task.PlanID = planID
 	}
 
 	// Update the task
