@@ -208,6 +208,40 @@ func (s *MCPServer) handleListFunctions(w http.ResponseWriter, r *http.Request) 
 				},
 			},
 			{
+				Name:        "update_plan_status",
+				Description: "Update the status of a plan",
+				Parameters: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"id": map[string]interface{}{
+							"type":        "string",
+							"description": "Plan ID",
+						},
+						"status": map[string]interface{}{
+							"type":        "string",
+							"description": "Plan status (new, inprogress, completed, cancelled)",
+							"enum":        []string{"new", "inprogress", "completed", "cancelled"},
+						},
+					},
+					"required": []string{"id", "status"},
+				},
+			},
+			{
+				Name:        "list_plans_by_status",
+				Description: "List all plans with a specific status",
+				Parameters: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"status": map[string]interface{}{
+							"type":        "string",
+							"description": "Plan status (new, inprogress, completed, cancelled)",
+							"enum":        []string{"new", "inprogress", "completed", "cancelled"},
+						},
+					},
+					"required": []string{"status"},
+				},
+			},
+			{
 				Name:        "create_task",
 				Description: "Create a new task as part of a feature implementation plan",
 				Parameters: map[string]interface{}{
@@ -387,6 +421,10 @@ func (s *MCPServer) handleInvoke(w http.ResponseWriter, r *http.Request, pathPar
 		result, err = s.updatePlan(ctx, params)
 	case "delete_plan":
 		result, err = s.deletePlan(ctx, params)
+	case "update_plan_status":
+		result, err = s.updatePlanStatus(ctx, params)
+	case "list_plans_by_status":
+		result, err = s.listPlansByStatus(ctx, params)
 	case "create_task":
 		result, err = s.createTask(ctx, params)
 	case "get_task":
@@ -523,7 +561,70 @@ func (s *MCPServer) deletePlan(ctx context.Context, params map[string]interface{
 		return nil, err
 	}
 
-	return map[string]string{"status": "success", "message": "Plan deleted"}, nil
+	return map[string]string{"result": "Plan deleted"}, nil
+}
+
+func (s *MCPServer) updatePlanStatus(ctx context.Context, params map[string]interface{}) (interface{}, error) {
+	id, ok := params["id"].(string)
+	if !ok {
+		return nil, fmt.Errorf("id is required and must be a string")
+	}
+
+	statusStr, ok := params["status"].(string)
+	if !ok {
+		return nil, fmt.Errorf("status is required and must be a string")
+	}
+
+	// Validate status
+	status := models.PlanStatus(statusStr)
+	if status != models.PlanStatusNew &&
+		status != models.PlanStatusInProgress &&
+		status != models.PlanStatusCompleted &&
+		status != models.PlanStatusCancelled {
+		return nil, fmt.Errorf("invalid status: %s", statusStr)
+	}
+
+	// Get the existing plan
+	plan, err := s.planRepo.Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update status
+	plan.Status = status
+	plan.UpdatedAt = time.Now()
+
+	// Save the updated plan
+	err = s.planRepo.Update(ctx, plan)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan, nil
+}
+
+func (s *MCPServer) listPlansByStatus(ctx context.Context, params map[string]interface{}) (interface{}, error) {
+	statusStr, ok := params["status"].(string)
+	if !ok {
+		return nil, fmt.Errorf("status is required and must be a string")
+	}
+
+	// Validate status
+	status := models.PlanStatus(statusStr)
+	if status != models.PlanStatusNew &&
+		status != models.PlanStatusInProgress &&
+		status != models.PlanStatusCompleted &&
+		status != models.PlanStatusCancelled {
+		return nil, fmt.Errorf("invalid status: %s", statusStr)
+	}
+
+	// Get plans by status
+	plans, err := s.planRepo.ListByStatus(ctx, status)
+	if err != nil {
+		return nil, err
+	}
+
+	return plans, nil
 }
 
 // Function implementations for task operations

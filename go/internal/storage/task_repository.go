@@ -73,6 +73,13 @@ func (r *TaskRepository) Create(ctx context.Context, planID, title, description 
 		return nil, fmt.Errorf("failed to add task to plan: %w", err)
 	}
 
+	// Update the plan status based on the new task
+	err = r.UpdatePlanStatus(ctx, planID)
+	if err != nil {
+		// Log the error but don't fail the task creation
+		fmt.Printf("Warning: failed to update plan status: %v\n", err)
+	}
+
 	return task, nil
 }
 
@@ -143,6 +150,20 @@ func (r *TaskRepository) Update(ctx context.Context, task *models.Task) error {
 		if err != nil {
 			return fmt.Errorf("failed to add task to new plan: %w", err)
 		}
+		
+		// Update status for both plans
+		err = r.UpdatePlanStatus(ctx, currentTask.PlanID)
+		if err != nil {
+			return fmt.Errorf("failed to update old plan status: %w", err)
+		}
+	}
+
+	// If the status has changed, update the plan status
+	if currentTask.Status != task.Status {
+		err = r.UpdatePlanStatus(ctx, task.PlanID)
+		if err != nil {
+			return fmt.Errorf("failed to update plan status: %w", err)
+		}
 	}
 
 	return nil
@@ -156,8 +177,11 @@ func (r *TaskRepository) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
+	// Store the plan ID for later use
+	planID := task.PlanID
+
 	// Remove the task from the plan's tasks list
-	planTasksKey := GetPlanTasksKey(task.PlanID)
+	planTasksKey := GetPlanTasksKey(planID)
 	_, err = r.client.client.ZRem(ctx, planTasksKey, []string{id})
 	if err != nil {
 		return fmt.Errorf("failed to remove task from plan list: %w", err)
@@ -171,7 +195,19 @@ func (r *TaskRepository) Delete(ctx context.Context, id string) error {
 	}
 
 	// Reorder the remaining tasks in the plan
-	return r.reorderPlanTasks(ctx, task.PlanID)
+	err = r.reorderPlanTasks(ctx, planID)
+	if err != nil {
+		return fmt.Errorf("failed to reorder tasks: %w", err)
+	}
+
+	// Update the plan status based on the remaining tasks
+	err = r.UpdatePlanStatus(ctx, planID)
+	if err != nil {
+		// Log the error but don't fail the task deletion
+		fmt.Printf("Warning: failed to update plan status: %v\n", err)
+	}
+
+	return nil
 }
 
 // ListByPlan returns all tasks for a plan, ordered by their sequence
@@ -349,40 +385,111 @@ func (r *TaskRepository) CreateBulk(ctx context.Context, planID string, taskInpu
 		createdTasks = append(createdTasks, task)
 	}
 
+	// Update the plan status based on the new tasks
+	err = r.UpdatePlanStatus(ctx, planID)
+	if err != nil {
+		// Log the error but don't fail the task creation
+		fmt.Printf("Warning: failed to update plan status: %v\n", err)
+	}
+
 	return createdTasks, nil
 }
 
 // reorderPlanTasks updates the order of all tasks in a plan to ensure they are sequential
 func (r *TaskRepository) reorderPlanTasks(ctx context.Context, planID string) error {
-	// Get all task IDs for the plan, ordered by their score (order)
-	planTasksKey := GetPlanTasksKey(planID)
-	opts := options.NewRangeByIndexQuery(0, -1)
-	taskIDs, err := r.client.client.ZRange(ctx, planTasksKey, opts)
+	// Get all tasks for the plan
+	tasks, err := r.ListByPlan(ctx, planID)
 	if err != nil {
-		return fmt.Errorf("failed to get plan tasks: %w", err)
+		return fmt.Errorf("failed to list tasks: %w", err)
 	}
 
-	// Update each task's order to match its position in the slice
-	for i, taskID := range taskIDs {
-		// Get the task
-		task, err := r.Get(ctx, taskID)
+	// If there are no tasks, nothing to do
+	if len(tasks) == 0 {
+		return nil
+	}
+
+	// Update the order of each task
+	planTasksKey := GetPlanTasksKey(planID)
+	for i, task := range tasks {
+		// Update the task's order
+		task.Order = i + 1
+		task.UpdatedAt = time.Now()
+
+		// Update the task in storage
+		taskKey := GetTaskKey(task.ID)
+		_, err := r.client.client.HSet(ctx, taskKey, task.ToMap())
 		if err != nil {
-			return fmt.Errorf("failed to get task %s: %w", taskID, err)
+			return fmt.Errorf("failed to update task order: %w", err)
 		}
 
-		if task.Order != i {
-			task.Order = i
-			taskKey := GetTaskKey(task.ID)
-			_, err := r.client.client.HSet(ctx, taskKey, task.ToMap())
-			if err != nil {
-				return fmt.Errorf("failed to update task order: %w", err)
-			}
+		// Update the task's score in the sorted set
+		_, err = r.client.client.ZAdd(ctx, planTasksKey, map[string]float64{task.ID: float64(task.Order)})
+		if err != nil {
+			return fmt.Errorf("failed to update task order in plan: %w", err)
+		}
+	}
 
-			// Update the task's score in the sorted set
-			_, err = r.client.client.ZAdd(ctx, planTasksKey, map[string]float64{task.ID: float64(i)})
-			if err != nil {
-				return fmt.Errorf("failed to update task order in hash: %w", err)
+	return nil
+}
+
+// UpdatePlanStatus automatically updates a plan's status based on its tasks
+func (r *TaskRepository) UpdatePlanStatus(ctx context.Context, planID string) error {
+	// Get all tasks for the plan
+	tasks, err := r.ListByPlan(ctx, planID)
+	if err != nil {
+		return fmt.Errorf("failed to list tasks: %w", err)
+	}
+
+	// Get the plan repository
+	planRepo := &PlanRepository{client: r.client}
+
+	// Get the current plan
+	plan, err := planRepo.Get(ctx, planID)
+	if err != nil {
+		return fmt.Errorf("failed to get plan: %w", err)
+	}
+
+	// Determine the new status based on tasks
+	newStatus := models.PlanStatusNew
+
+	// If there are no tasks, keep as "new"
+	if len(tasks) == 0 {
+		newStatus = models.PlanStatusNew
+	} else {
+		// Check if all tasks are completed
+		allCompleted := true
+		hasInProgress := false
+
+		for _, task := range tasks {
+			if task.Status == models.TaskStatusCompleted {
+				continue
+			} else if task.Status == models.TaskStatusInProgress {
+				allCompleted = false
+				hasInProgress = true
+			} else {
+				allCompleted = false
 			}
+		}
+
+		if allCompleted {
+			newStatus = models.PlanStatusCompleted
+		} else if hasInProgress {
+			newStatus = models.PlanStatusInProgress
+		} else {
+			// Has tasks but none are in progress, keep as "new"
+			newStatus = models.PlanStatusNew
+		}
+	}
+
+	// Only update if the status has changed
+	if plan.Status != newStatus {
+		plan.Status = newStatus
+		plan.UpdatedAt = time.Now()
+
+		// Save the updated plan
+		err = planRepo.Update(ctx, plan)
+		if err != nil {
+			return fmt.Errorf("failed to update plan status: %w", err)
 		}
 	}
 
