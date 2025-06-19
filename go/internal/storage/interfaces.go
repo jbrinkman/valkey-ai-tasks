@@ -14,6 +14,7 @@ type PlanRepositoryInterface interface {
 	Delete(ctx context.Context, id string) error
 	List(ctx context.Context) ([]*models.Plan, error)
 	ListByApplication(ctx context.Context, applicationID string) ([]*models.Plan, error)
+	ListByStatus(ctx context.Context, status models.PlanStatus) ([]*models.Plan, error)
 }
 
 // ProjectRepositoryInterface defines the legacy interface for project storage operations

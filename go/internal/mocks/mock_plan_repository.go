@@ -102,5 +102,24 @@ func (r *MockPlanRepository) ListByApplication(ctx context.Context, applicationI
 	return plans, nil
 }
 
+// ListByStatus returns plans with a specific status from the mock storage
+func (r *MockPlanRepository) ListByStatus(ctx context.Context, status models.PlanStatus) ([]*models.Plan, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	plans := make([]*models.Plan, 0)
+	for _, plan := range r.plans {
+		// For plans without a status field, treat them as "new" for filtering
+		if plan.Status == "" {
+			if status == models.PlanStatusNew {
+				plans = append(plans, plan)
+			}
+		} else if plan.Status == status {
+			plans = append(plans, plan)
+		}
+	}
+	return plans, nil
+}
+
 // Ensure MockPlanRepository implements the PlanRepositoryInterface
 var _ storage.PlanRepositoryInterface = (*MockPlanRepository)(nil)

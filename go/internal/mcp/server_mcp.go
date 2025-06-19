@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/jbrinkman/valkey-ai-tasks/go/internal/models"
 	"github.com/jbrinkman/valkey-ai-tasks/go/internal/storage"
@@ -61,6 +62,8 @@ func (s *MCPGoServer) registerTools() {
 	s.registerListPlansByApplicationTool()
 	s.registerUpdatePlanTool()
 	s.registerDeletePlanTool()
+	s.registerUpdatePlanStatusTool()
+	s.registerListPlansByStatusTool()
 
 	// Task tools
 	s.registerCreateTaskTool()
@@ -194,6 +197,71 @@ func (s *MCPGoServer) registerListPlansByApplicationTool() {
 	})
 }
 
+// validatePlanStatus checks if the provided status is a valid plan status
+func validatePlanStatus(status models.PlanStatus) error {
+	if status != models.PlanStatusNew &&
+		status != models.PlanStatusInProgress &&
+		status != models.PlanStatusCompleted &&
+		status != models.PlanStatusCancelled {
+		return fmt.Errorf("invalid status: %s", status)
+	}
+	return nil
+}
+
+func (s *MCPGoServer) registerUpdatePlanStatusTool() {
+	tool := mcp.NewTool("update_plan_status",
+		mcp.WithDescription("Update the status of a plan"),
+		mcp.WithString("id",
+			mcp.Required(),
+			mcp.Description("Plan ID"),
+		),
+		mcp.WithString("status",
+			mcp.Required(),
+			mcp.Description("New status value (new, inprogress, completed, cancelled)"),
+		),
+	)
+
+	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		id, err := request.RequireString("id")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		statusStr, err := request.RequireString("status")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		// Validate status
+		status := models.PlanStatus(statusStr)
+		if err := validatePlanStatus(status); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		// Get the existing plan
+		plan, err := s.planRepo.Get(ctx, id)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to get plan: %v", err)), nil
+		}
+
+		// Update status
+		plan.Status = status
+		plan.UpdatedAt = time.Now()
+
+		// Save the updated plan
+		err = s.planRepo.Update(ctx, plan)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to update plan: %v", err)), nil
+		}
+
+		planJson, err := json.Marshal(plan)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal plan: %v", err)), nil
+		}
+		return mcp.NewToolResultText(string(planJson)), nil
+	})
+}
+
 func (s *MCPGoServer) registerUpdatePlanTool() {
 	tool := mcp.NewTool("update_plan",
 		mcp.WithDescription("Update the details or scope of a feature planning plan"),
@@ -266,7 +334,42 @@ func (s *MCPGoServer) registerDeletePlanTool() {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to delete plan: %v", err)), nil
 		}
 
-		return mcp.NewToolResultText("Plan deleted"), nil
+		return mcp.NewToolResultText(`{"result":"Plan deleted"}`), nil
+	})
+}
+
+func (s *MCPGoServer) registerListPlansByStatusTool() {
+	tool := mcp.NewTool("list_plans_by_status",
+		mcp.WithDescription("Find plans by their current status (new, inprogress, completed, cancelled)"),
+		mcp.WithString("status",
+			mcp.Required(),
+			mcp.Description("Plan status to filter by"),
+		),
+	)
+
+	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		statusStr, err := request.RequireString("status")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		// Validate status
+		status := models.PlanStatus(statusStr)
+		if err := validatePlanStatus(status); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		// Get plans with the specified status
+		plans, err := s.planRepo.ListByStatus(ctx, status)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to list plans by status: %v", err)), nil
+		}
+
+		plansJson, err := json.Marshal(plans)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal plans: %v", err)), nil
+		}
+		return mcp.NewToolResultText(string(plansJson)), nil
 	})
 }
 
