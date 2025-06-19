@@ -164,6 +164,42 @@ func (r *PlanRepository) List(ctx context.Context) ([]*models.Plan, error) {
 	return plans, nil
 }
 
+// ListByStatus retrieves all plans with a specific status
+func (r *PlanRepository) ListByStatus(ctx context.Context, status models.PlanStatus) ([]*models.Plan, error) {
+	// Get all plan IDs
+	planIDs, err := r.client.client.SMembers(ctx, plansListKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get plan IDs: %w", err)
+	}
+
+	var plans []*models.Plan
+
+	// Get each plan individually
+	for id := range planIDs {
+		// Get the plan
+		plan, err := r.Get(ctx, id)
+		if err != nil {
+			// Skip plans that can't be retrieved
+			continue
+		}
+
+		// Check if the plan has the requested status
+		if plan.Status == "" {
+			// Handle plans without status (treat as "new" for filtering)
+			if status != models.PlanStatusNew {
+				continue
+			}
+		} else if plan.Status != status {
+			continue
+		}
+
+		// Add plan to results
+		plans = append(plans, plan)
+	}
+
+	return plans, nil
+}
+
 // ListByApplication retrieves all plans for a specific application
 func (r *PlanRepository) ListByApplication(ctx context.Context, applicationID string) ([]*models.Plan, error) {
 	// Get all plan IDs for this application
