@@ -1,0 +1,2967 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>mcpserver: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/jbrinkman/valkey-ai-tasks/go/cmd/mcpserver/main.go (0.0%)</option>
+				
+				<option value="file1">github.com/jbrinkman/valkey-ai-tasks/go/internal/mcp/server.go (0.0%)</option>
+				
+				<option value="file2">github.com/jbrinkman/valkey-ai-tasks/go/internal/mcp/server_mcp.go (0.0%)</option>
+				
+				<option value="file3">github.com/jbrinkman/valkey-ai-tasks/go/internal/models/project.go (0.0%)</option>
+				
+				<option value="file4">github.com/jbrinkman/valkey-ai-tasks/go/internal/models/task.go (0.0%)</option>
+				
+				<option value="file5">github.com/jbrinkman/valkey-ai-tasks/go/internal/storage/project_repository.go (0.0%)</option>
+				
+				<option value="file6">github.com/jbrinkman/valkey-ai-tasks/go/internal/storage/task_repository.go (0.0%)</option>
+				
+				<option value="file7">github.com/jbrinkman/valkey-ai-tasks/go/internal/storage/valkey_client.go (0.0%)</option>
+				
+				<option value="file8">github.com/jbrinkman/valkey-ai-tasks/go/tests/utils/test_data.go (87.3%)</option>
+				
+				<option value="file9">github.com/jbrinkman/valkey-ai-tasks/go/tests/utils/test_helpers.go (55.6%)</option>
+				
+				<option value="file10">github.com/jbrinkman/valkey-ai-tasks/go/tests/utils/valkey_container.go (97.1%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "context"
+        "log"
+        "os"
+        "os/signal"
+        "strconv"
+        "syscall"
+        "time"
+
+        "github.com/jbrinkman/valkey-ai-tasks/go/internal/mcp"
+        "github.com/jbrinkman/valkey-ai-tasks/go/internal/storage"
+)
+
+func main() <span class="cov0" title="0">{
+        // Get environment variables or use defaults
+        valkeyHost := getEnv("VALKEY_HOST", "localhost")
+        valkeyPortStr := getEnv("VALKEY_PORT", "6379")
+        valkeyPort, err := strconv.Atoi(valkeyPortStr)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Invalid VALKEY_PORT: %v", err)
+        }</span>
+        <span class="cov0" title="0">valkeyUsername := getEnv("VALKEY_USERNAME", "")
+        valkeyPassword := getEnv("VALKEY_PASSWORD", "")
+        serverPortStr := getEnv("SERVER_PORT", "8080")
+        serverPort, err := strconv.Atoi(serverPortStr)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Invalid SERVER_PORT: %v", err)
+        }</span>
+
+        // Initialize Valkey client
+        <span class="cov0" title="0">valkeyClient, err := storage.NewValkeyClient(valkeyHost, valkeyPort, valkeyUsername, valkeyPassword)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to initialize Valkey client: %v", err)
+        }</span>
+        <span class="cov0" title="0">defer valkeyClient.Close()
+
+        // Ping Valkey to ensure connection
+        ctx := context.Background()
+        if err := valkeyClient.Ping(ctx); err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to connect to Valkey: %v", err)
+        }</span>
+        <span class="cov0" title="0">log.Printf("Connected to Valkey at %s:%d", valkeyHost, valkeyPort)
+
+        // Initialize repositories
+        projectRepo := storage.NewProjectRepository(valkeyClient)
+        taskRepo := storage.NewTaskRepository(valkeyClient)
+
+        // Create MCP server using the mark3labs/mcp-go library
+        mcpServer := mcp.NewMCPGoServer(*projectRepo, *taskRepo)
+
+        // Set up signal handling for graceful shutdown
+        quit := make(chan os.Signal, 1)
+        signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+        // Start the MCP server in a goroutine
+        go func() </span><span class="cov0" title="0">{
+                log.Printf("Initializing MCP server on port %d", serverPort)
+                if err := mcpServer.Start(serverPort); err != nil </span><span class="cov0" title="0">{
+                        log.Fatalf("MCP server error: %v", err)
+                }</span>
+        }()
+
+        // Wait for interrupt signal
+        <span class="cov0" title="0">&lt;-quit
+        log.Println("Shutting down server...")
+
+        // Give the server some time to finish ongoing requests
+        time.Sleep(2 * time.Second)
+
+        log.Println("Server exited properly")</span>
+}
+
+// getEnv gets an environment variable or returns a default value
+func getEnv(key, defaultValue string) string <span class="cov0" title="0">{
+        if value, exists := os.LookupEnv(key); exists </span><span class="cov0" title="0">{
+                return value
+        }</span>
+        <span class="cov0" title="0">return defaultValue</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package mcp
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "log"
+        "net/http"
+        "strings"
+        "time"
+
+        "github.com/jbrinkman/valkey-ai-tasks/go/internal/models"
+        "github.com/jbrinkman/valkey-ai-tasks/go/internal/storage"
+)
+
+// MCPServer implements the Model Context Protocol server for task management
+type MCPServer struct {
+        projectRepo *storage.ProjectRepository
+        taskRepo    *storage.TaskRepository
+}
+
+// NewMCPServer creates a new MCP server with the given repositories
+func NewMCPServer(projectRepo *storage.ProjectRepository, taskRepo *storage.TaskRepository) *MCPServer <span class="cov0" title="0">{
+        return &amp;MCPServer{
+                projectRepo: projectRepo,
+                taskRepo:    taskRepo,
+        }
+}</span>
+
+// ServeHTTP implements the http.Handler interface for the MCP server
+func (s *MCPServer) ServeHTTP(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        // Set common headers
+        w.Header().Set("Content-Type", "application/json")
+
+        // Handle OPTIONS requests for CORS
+        if r.Method == http.MethodOptions </span><span class="cov0" title="0">{
+                w.Header().Set("Access-Control-Allow-Origin", "*")
+                w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+                w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+                w.WriteHeader(http.StatusOK)
+                return
+        }</span>
+
+        // Set CORS headers for all responses
+        <span class="cov0" title="0">w.Header().Set("Access-Control-Allow-Origin", "*")
+
+        // Parse the path to determine the operation
+        path := strings.TrimPrefix(r.URL.Path, "/")
+        pathParts := strings.Split(path, "/")
+
+        log.Printf("Url: %s", r.RequestURI)
+        log.Printf("Method: %s", r.Method)
+        log.Printf("Path parts: %v", pathParts)
+        if len(pathParts) == 0 </span><span class="cov0" title="0">{
+                handleError(w, fmt.Errorf("invalid path"), http.StatusBadRequest)
+                return
+        }</span>
+
+        // Handle MCP protocol endpoints
+        <span class="cov0" title="0">if pathParts[0] == "mcp" </span><span class="cov0" title="0">{
+                // Check if this is an SSE request
+                if len(pathParts) &gt;= 2 &amp;&amp; pathParts[1] == "sse" </span><span class="cov0" title="0">{
+                        s.handleSSE(w, r)
+                        return
+                }</span>
+
+                // Handle other MCP requests
+                <span class="cov0" title="0">s.handleMCPRequest(w, r, pathParts[1:])
+                return</span>
+        }
+
+        // If we get here, it's an unknown endpoint
+        <span class="cov0" title="0">handleError(w, fmt.Errorf("unknown endpoint: %s", pathParts[0]), http.StatusNotFound)</span>
+}
+
+// handleMCPRequest processes MCP protocol requests
+func (s *MCPServer) handleMCPRequest(w http.ResponseWriter, r *http.Request, pathParts []string) <span class="cov0" title="0">{
+        // If it's a GET request to the root /mcp endpoint, return the list of functions
+        if len(pathParts) == 0 &amp;&amp; r.Method == http.MethodGet </span><span class="cov0" title="0">{
+                s.handleListFunctions(w, r)
+                return
+        }</span>
+
+        // Otherwise, handle specific paths
+        <span class="cov0" title="0">if len(pathParts) == 0 </span><span class="cov0" title="0">{
+                handleError(w, fmt.Errorf("invalid MCP path"), http.StatusBadRequest)
+                return
+        }</span>
+
+        <span class="cov0" title="0">switch pathParts[0] </span>{
+        case "list_functions":<span class="cov0" title="0">
+                s.handleListFunctions(w, r)</span>
+        case "invoke":<span class="cov0" title="0">
+                s.handleInvoke(w, r, pathParts[1:])</span>
+        default:<span class="cov0" title="0">
+                handleError(w, fmt.Errorf("unknown MCP operation: %s", pathParts[0]), http.StatusNotFound)</span>
+        }
+}
+
+// MCPFunction represents a function that can be called via the MCP protocol
+type MCPFunction struct {
+        Name        string      `json:"name"`
+        Description string      `json:"description"`
+        Parameters  interface{} `json:"parameters"`
+}
+
+// MCPFunctionList represents the list of available functions
+type MCPFunctionList struct {
+        Functions []MCPFunction `json:"functions"`
+}
+
+// handleListFunctions returns the list of available functions
+func (s *MCPServer) handleListFunctions(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        functions := MCPFunctionList{
+                Functions: []MCPFunction{
+                        {
+                                Name:        "create_project",
+                                Description: "Create a new project",
+                                Parameters: map[string]interface{}{
+                                        "type": "object",
+                                        "properties": map[string]interface{}{
+                                                "application_id": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Application identifier to associate with this project",
+                                                },
+                                                "name": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Project name",
+                                                },
+                                                "description": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Project description",
+                                                },
+                                        },
+                                        "required": []string{"application_id", "name"},
+                                },
+                        },
+                        {
+                                Name:        "get_project",
+                                Description: "Get a project by ID",
+                                Parameters: map[string]interface{}{
+                                        "type": "object",
+                                        "properties": map[string]interface{}{
+                                                "id": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Project ID",
+                                                },
+                                        },
+                                        "required": []string{"id"},
+                                },
+                        },
+                        {
+                                Name:        "list_projects",
+                                Description: "List all projects",
+                                Parameters: map[string]interface{}{
+                                        "type":       "object",
+                                        "properties": map[string]interface{}{},
+                                },
+                        },
+                        {
+                                Name:        "list_projects_by_application",
+                                Description: "List all projects for a specific application",
+                                Parameters: map[string]interface{}{
+                                        "type": "object",
+                                        "properties": map[string]interface{}{
+                                                "application_id": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Application identifier to filter projects by",
+                                                },
+                                        },
+                                        "required": []string{"application_id"},
+                                },
+                        },
+                        {
+                                Name:        "update_project",
+                                Description: "Update an existing project",
+                                Parameters: map[string]interface{}{
+                                        "type": "object",
+                                        "properties": map[string]interface{}{
+                                                "id": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Project ID",
+                                                },
+                                                "name": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Project name",
+                                                },
+                                                "description": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Project description",
+                                                },
+                                        },
+                                        "required": []string{"id"},
+                                },
+                        },
+                        {
+                                Name:        "delete_project",
+                                Description: "Delete a project by ID",
+                                Parameters: map[string]interface{}{
+                                        "type": "object",
+                                        "properties": map[string]interface{}{
+                                                "id": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Project ID",
+                                                },
+                                        },
+                                        "required": []string{"id"},
+                                },
+                        },
+                        {
+                                Name:        "create_task",
+                                Description: "Create a new task in a project",
+                                Parameters: map[string]interface{}{
+                                        "type": "object",
+                                        "properties": map[string]interface{}{
+                                                "project_id": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Project ID",
+                                                },
+                                                "title": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Task title",
+                                                },
+                                                "description": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Task description",
+                                                },
+                                                "priority": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Task priority (low, medium, high)",
+                                                        "enum":        []string{"low", "medium", "high"},
+                                                },
+                                        },
+                                        "required": []string{"project_id", "title"},
+                                },
+                        },
+                        {
+                                Name:        "get_task",
+                                Description: "Get a task by ID",
+                                Parameters: map[string]interface{}{
+                                        "type": "object",
+                                        "properties": map[string]interface{}{
+                                                "id": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Task ID",
+                                                },
+                                        },
+                                        "required": []string{"id"},
+                                },
+                        },
+                        {
+                                Name:        "list_tasks_by_project",
+                                Description: "List all tasks in a project",
+                                Parameters: map[string]interface{}{
+                                        "type": "object",
+                                        "properties": map[string]interface{}{
+                                                "project_id": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Project ID",
+                                                },
+                                        },
+                                        "required": []string{"project_id"},
+                                },
+                        },
+                        {
+                                Name:        "list_tasks_by_status",
+                                Description: "List all tasks with a specific status",
+                                Parameters: map[string]interface{}{
+                                        "type": "object",
+                                        "properties": map[string]interface{}{
+                                                "status": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Task status (pending, in_progress, completed, cancelled)",
+                                                        "enum":        []string{"pending", "in_progress", "completed", "cancelled"},
+                                                },
+                                        },
+                                        "required": []string{"status"},
+                                },
+                        },
+                        {
+                                Name:        "update_task",
+                                Description: "Update an existing task",
+                                Parameters: map[string]interface{}{
+                                        "type": "object",
+                                        "properties": map[string]interface{}{
+                                                "id": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Task ID",
+                                                },
+                                                "title": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Task title",
+                                                },
+                                                "description": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Task description",
+                                                },
+                                                "status": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Task status (pending, in_progress, completed, cancelled)",
+                                                        "enum":        []string{"pending", "in_progress", "completed", "cancelled"},
+                                                },
+                                                "priority": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Task priority (low, medium, high)",
+                                                        "enum":        []string{"low", "medium", "high"},
+                                                },
+                                                "project_id": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Project ID (if moving to another project)",
+                                                },
+                                        },
+                                        "required": []string{"id"},
+                                },
+                        },
+                        {
+                                Name:        "delete_task",
+                                Description: "Delete a task by ID",
+                                Parameters: map[string]interface{}{
+                                        "type": "object",
+                                        "properties": map[string]interface{}{
+                                                "id": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Task ID",
+                                                },
+                                        },
+                                        "required": []string{"id"},
+                                },
+                        },
+                        {
+                                Name:        "reorder_task",
+                                Description: "Change the order of a task within its project",
+                                Parameters: map[string]interface{}{
+                                        "type": "object",
+                                        "properties": map[string]interface{}{
+                                                "id": map[string]interface{}{
+                                                        "type":        "string",
+                                                        "description": "Task ID",
+                                                },
+                                                "new_order": map[string]interface{}{
+                                                        "type":        "integer",
+                                                        "description": "New position in the project's task list (0-based)",
+                                                },
+                                        },
+                                        "required": []string{"id", "new_order"},
+                                },
+                        },
+                },
+        }
+
+        json.NewEncoder(w).Encode(functions)
+}</span>
+
+// handleInvoke processes function invocation requests
+func (s *MCPServer) handleInvoke(w http.ResponseWriter, r *http.Request, pathParts []string) <span class="cov0" title="0">{
+        if len(pathParts) == 0 </span><span class="cov0" title="0">{
+                handleError(w, fmt.Errorf("function name required"), http.StatusBadRequest)
+                return
+        }</span>
+
+        <span class="cov0" title="0">functionName := pathParts[0]
+
+        // Parse the request body
+        var params map[string]interface{}
+        if err := json.NewDecoder(r.Body).Decode(&amp;params); err != nil </span><span class="cov0" title="0">{
+                handleError(w, fmt.Errorf("invalid request body: %v", err), http.StatusBadRequest)
+                return
+        }</span>
+
+        // Create a context for the operation
+        <span class="cov0" title="0">ctx := context.Background()
+
+        // Handle the function invocation
+        var result interface{}
+        var err error
+
+        switch functionName </span>{
+        case "create_project":<span class="cov0" title="0">
+                result, err = s.createProject(ctx, params)</span>
+        case "get_project":<span class="cov0" title="0">
+                result, err = s.getProject(ctx, params)</span>
+        case "list_projects":<span class="cov0" title="0">
+                result, err = s.listProjects(ctx)</span>
+        case "list_projects_by_application":<span class="cov0" title="0">
+                result, err = s.listProjectsByApplication(ctx, params)</span>
+        case "update_project":<span class="cov0" title="0">
+                result, err = s.updateProject(ctx, params)</span>
+        case "delete_project":<span class="cov0" title="0">
+                result, err = s.deleteProject(ctx, params)</span>
+        case "create_task":<span class="cov0" title="0">
+                result, err = s.createTask(ctx, params)</span>
+        case "get_task":<span class="cov0" title="0">
+                result, err = s.getTask(ctx, params)</span>
+        case "list_tasks_by_project":<span class="cov0" title="0">
+                result, err = s.listTasksByProject(ctx, params)</span>
+        case "list_tasks_by_status":<span class="cov0" title="0">
+                result, err = s.listTasksByStatus(ctx, params)</span>
+        case "update_task":<span class="cov0" title="0">
+                result, err = s.updateTask(ctx, params)</span>
+        case "delete_task":<span class="cov0" title="0">
+                result, err = s.deleteTask(ctx, params)</span>
+        case "reorder_task":<span class="cov0" title="0">
+                result, err = s.reorderTask(ctx, params)</span>
+        default:<span class="cov0" title="0">
+                handleError(w, fmt.Errorf("unknown function: %s", functionName), http.StatusNotFound)
+                return</span>
+        }
+
+        <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                handleError(w, err, http.StatusInternalServerError)
+                return
+        }</span>
+
+        // Return the result
+        <span class="cov0" title="0">json.NewEncoder(w).Encode(result)</span>
+}
+
+// Helper function to handle errors
+func handleError(w http.ResponseWriter, err error, statusCode int) <span class="cov0" title="0">{
+        log.Printf("Error: %v", err)
+        w.WriteHeader(statusCode)
+        json.NewEncoder(w).Encode(map[string]string{
+                "error": err.Error(),
+        })
+}</span>
+
+// Function implementations for project operations
+func (s *MCPServer) createProject(ctx context.Context, params map[string]interface{}) (interface{}, error) <span class="cov0" title="0">{
+        applicationID, ok := params["application_id"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("application_id is required and must be a string")
+        }</span>
+
+        <span class="cov0" title="0">name, ok := params["name"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("name is required and must be a string")
+        }</span>
+
+        <span class="cov0" title="0">description, _ := params["description"].(string) // Optional
+
+        project, err := s.projectRepo.Create(ctx, applicationID, name, description)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return project, nil</span>
+}
+
+func (s *MCPServer) getProject(ctx context.Context, params map[string]interface{}) (interface{}, error) <span class="cov0" title="0">{
+        id, ok := params["id"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("id is required and must be a string")
+        }</span>
+
+        <span class="cov0" title="0">project, err := s.projectRepo.Get(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return project, nil</span>
+}
+
+func (s *MCPServer) listProjects(ctx context.Context) (interface{}, error) <span class="cov0" title="0">{
+        projects, err := s.projectRepo.List(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return projects, nil</span>
+}
+
+func (s *MCPServer) listProjectsByApplication(ctx context.Context, params map[string]interface{}) (interface{}, error) <span class="cov0" title="0">{
+        applicationID, ok := params["application_id"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("application_id is required and must be a string")
+        }</span>
+
+        <span class="cov0" title="0">projects, err := s.projectRepo.ListByApplication(ctx, applicationID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return projects, nil</span>
+}
+
+func (s *MCPServer) updateProject(ctx context.Context, params map[string]interface{}) (interface{}, error) <span class="cov0" title="0">{
+        id, ok := params["id"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("id is required and must be a string")
+        }</span>
+
+        // Get the existing project
+        <span class="cov0" title="0">project, err := s.projectRepo.Get(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Update fields if provided
+        <span class="cov0" title="0">if name, ok := params["name"].(string); ok </span><span class="cov0" title="0">{
+                project.Name = name
+        }</span>
+
+        <span class="cov0" title="0">if description, ok := params["description"].(string); ok </span><span class="cov0" title="0">{
+                project.Description = description
+        }</span>
+
+        // Update the project
+        <span class="cov0" title="0">err = s.projectRepo.Update(ctx, project)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return project, nil</span>
+}
+
+func (s *MCPServer) deleteProject(ctx context.Context, params map[string]interface{}) (interface{}, error) <span class="cov0" title="0">{
+        id, ok := params["id"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("id is required and must be a string")
+        }</span>
+
+        <span class="cov0" title="0">err := s.projectRepo.Delete(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return map[string]string{"status": "success", "message": "Project deleted"}, nil</span>
+}
+
+// Function implementations for task operations
+func (s *MCPServer) createTask(ctx context.Context, params map[string]interface{}) (interface{}, error) <span class="cov0" title="0">{
+        projectID, ok := params["project_id"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("project_id is required and must be a string")
+        }</span>
+
+        <span class="cov0" title="0">title, ok := params["title"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("title is required and must be a string")
+        }</span>
+
+        <span class="cov0" title="0">description, _ := params["description"].(string) // Optional
+
+        priorityStr, ok := params["priority"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                priorityStr = string(models.TaskPriorityMedium) // Default priority
+        }</span>
+
+        <span class="cov0" title="0">priority := models.TaskPriority(priorityStr)
+        if priority != models.TaskPriorityLow &amp;&amp;
+                priority != models.TaskPriorityMedium &amp;&amp;
+                priority != models.TaskPriorityHigh </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("invalid priority: %s", priorityStr)
+        }</span>
+
+        <span class="cov0" title="0">task, err := s.taskRepo.Create(ctx, projectID, title, description, priority)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return task, nil</span>
+}
+
+func (s *MCPServer) getTask(ctx context.Context, params map[string]interface{}) (interface{}, error) <span class="cov0" title="0">{
+        id, ok := params["id"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("id is required and must be a string")
+        }</span>
+
+        <span class="cov0" title="0">task, err := s.taskRepo.Get(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return task, nil</span>
+}
+
+func (s *MCPServer) listTasksByProject(ctx context.Context, params map[string]interface{}) (interface{}, error) <span class="cov0" title="0">{
+        projectID, ok := params["project_id"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("project_id is required and must be a string")
+        }</span>
+
+        <span class="cov0" title="0">tasks, err := s.taskRepo.ListByProject(ctx, projectID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return tasks, nil</span>
+}
+
+func (s *MCPServer) listTasksByStatus(ctx context.Context, params map[string]interface{}) (interface{}, error) <span class="cov0" title="0">{
+        statusStr, ok := params["status"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("status is required and must be a string")
+        }</span>
+
+        <span class="cov0" title="0">status := models.TaskStatus(statusStr)
+        if status != models.TaskStatusPending &amp;&amp;
+                status != models.TaskStatusInProgress &amp;&amp;
+                status != models.TaskStatusCompleted &amp;&amp;
+                status != models.TaskStatusCancelled </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("invalid status: %s", statusStr)
+        }</span>
+
+        <span class="cov0" title="0">tasks, err := s.taskRepo.ListByStatus(ctx, status)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return tasks, nil</span>
+}
+
+func (s *MCPServer) updateTask(ctx context.Context, params map[string]interface{}) (interface{}, error) <span class="cov0" title="0">{
+        id, ok := params["id"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("id is required and must be a string")
+        }</span>
+
+        // Get the existing task
+        <span class="cov0" title="0">task, err := s.taskRepo.Get(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Update fields if provided
+        <span class="cov0" title="0">if title, ok := params["title"].(string); ok </span><span class="cov0" title="0">{
+                task.Title = title
+        }</span>
+
+        <span class="cov0" title="0">if description, ok := params["description"].(string); ok </span><span class="cov0" title="0">{
+                task.Description = description
+        }</span>
+
+        <span class="cov0" title="0">if statusStr, ok := params["status"].(string); ok </span><span class="cov0" title="0">{
+                status := models.TaskStatus(statusStr)
+                if status != models.TaskStatusPending &amp;&amp;
+                        status != models.TaskStatusInProgress &amp;&amp;
+                        status != models.TaskStatusCompleted &amp;&amp;
+                        status != models.TaskStatusCancelled </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("invalid status: %s", statusStr)
+                }</span>
+                <span class="cov0" title="0">task.Status = status</span>
+        }
+
+        <span class="cov0" title="0">if priorityStr, ok := params["priority"].(string); ok </span><span class="cov0" title="0">{
+                priority := models.TaskPriority(priorityStr)
+                if priority != models.TaskPriorityLow &amp;&amp;
+                        priority != models.TaskPriorityMedium &amp;&amp;
+                        priority != models.TaskPriorityHigh </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("invalid priority: %s", priorityStr)
+                }</span>
+                <span class="cov0" title="0">task.Priority = priority</span>
+        }
+
+        <span class="cov0" title="0">if projectID, ok := params["project_id"].(string); ok &amp;&amp; projectID != task.ProjectID </span><span class="cov0" title="0">{
+                // Check if the new project exists
+                _, err := s.projectRepo.Get(ctx, projectID)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("new project not found: %s", projectID)
+                }</span>
+                <span class="cov0" title="0">task.ProjectID = projectID</span>
+        }
+
+        // Update the task
+        <span class="cov0" title="0">err = s.taskRepo.Update(ctx, task)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return task, nil</span>
+}
+
+func (s *MCPServer) deleteTask(ctx context.Context, params map[string]interface{}) (interface{}, error) <span class="cov0" title="0">{
+        id, ok := params["id"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("id is required and must be a string")
+        }</span>
+
+        <span class="cov0" title="0">err := s.taskRepo.Delete(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return map[string]string{"status": "success", "message": "Task deleted"}, nil</span>
+}
+
+func (s *MCPServer) reorderTask(ctx context.Context, params map[string]interface{}) (interface{}, error) <span class="cov0" title="0">{
+        id, ok := params["id"].(string)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("id is required and must be a string")
+        }</span>
+
+        <span class="cov0" title="0">newOrderFloat, ok := params["new_order"].(float64)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("new_order is required and must be a number")
+        }</span>
+        <span class="cov0" title="0">newOrder := int(newOrderFloat)
+
+        err := s.taskRepo.ReorderTask(ctx, id, newOrder)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        // Get the updated task
+        <span class="cov0" title="0">task, err := s.taskRepo.Get(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return task, nil</span>
+}
+
+// handleSSE handles Server-Sent Events connections for the MCP protocol
+func (s *MCPServer) handleSSE(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        log.Printf("SSE connection attempt from %s", r.RemoteAddr)
+
+        // Set headers for SSE
+        w.Header().Set("Content-Type", "text/event-stream")
+        w.Header().Set("Cache-Control", "no-cache")
+        w.Header().Set("Connection", "keep-alive")
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+
+        // Create a channel for client disconnection detection
+        clientGone := r.Context().Done()
+
+        // Send initial connection established message - this is critical
+        // Format must be exactly as expected by MCP clients
+        fmt.Fprintf(w, "data: {\"type\":\"connection_established\"}\n\n")
+        w.(http.Flusher).Flush()
+
+        log.Printf("SSE connection established with %s", r.RemoteAddr)
+
+        // If this is a POST request, handle function invocation
+        if r.Method == http.MethodPost </span><span class="cov0" title="0">{
+                var requestData map[string]interface{}
+                if err := json.NewDecoder(r.Body).Decode(&amp;requestData); err != nil </span><span class="cov0" title="0">{
+                        log.Printf("Error parsing SSE request body: %v", err)
+                        sendSSEError(w, "invalid_request", "Failed to parse request body", http.StatusBadRequest)
+                        return
+                }</span>
+
+                // Extract function name and parameters
+                <span class="cov0" title="0">functionName, ok := requestData["name"].(string)
+                if !ok </span><span class="cov0" title="0">{
+                        log.Printf("Missing function name in SSE request")
+                        sendSSEError(w, "invalid_request", "Missing or invalid function name", http.StatusBadRequest)
+                        return
+                }</span>
+
+                <span class="cov0" title="0">log.Printf("SSE function call: %s", functionName)
+
+                // Get parameters (if any)
+                var params map[string]interface{}
+                if p, ok := requestData["parameters"].(map[string]interface{}); ok </span><span class="cov0" title="0">{
+                        params = p
+                }</span> else<span class="cov0" title="0"> {
+                        params = make(map[string]interface{})
+                }</span>
+
+                // Generate a request ID
+                <span class="cov0" title="0">requestID := fmt.Sprintf("req_%d", time.Now().UnixNano())
+
+                // Execute the appropriate function based on the name
+                var result interface{}
+                var err error
+
+                switch functionName </span>{
+                case "create_project":<span class="cov0" title="0">
+                        result, err = s.createProject(r.Context(), params)</span>
+                case "get_project":<span class="cov0" title="0">
+                        result, err = s.getProject(r.Context(), params)</span>
+                case "list_projects":<span class="cov0" title="0">
+                        result, err = s.listProjects(r.Context())</span>
+                case "list_projects_by_application":<span class="cov0" title="0">
+                        result, err = s.listProjectsByApplication(r.Context(), params)</span>
+                case "update_project":<span class="cov0" title="0">
+                        result, err = s.updateProject(r.Context(), params)</span>
+                case "delete_project":<span class="cov0" title="0">
+                        result, err = s.deleteProject(r.Context(), params)</span>
+                case "create_task":<span class="cov0" title="0">
+                        result, err = s.createTask(r.Context(), params)</span>
+                case "get_task":<span class="cov0" title="0">
+                        result, err = s.getTask(r.Context(), params)</span>
+                case "list_tasks_by_project":<span class="cov0" title="0">
+                        result, err = s.listTasksByProject(r.Context(), params)</span>
+                case "list_tasks_by_status":<span class="cov0" title="0">
+                        result, err = s.listTasksByStatus(r.Context(), params)</span>
+                case "update_task":<span class="cov0" title="0">
+                        result, err = s.updateTask(r.Context(), params)</span>
+                case "delete_task":<span class="cov0" title="0">
+                        result, err = s.deleteTask(r.Context(), params)</span>
+                case "reorder_task":<span class="cov0" title="0">
+                        result, err = s.reorderTask(r.Context(), params)</span>
+                default:<span class="cov0" title="0">
+                        log.Printf("Unknown function in SSE request: %s", functionName)
+                        sendSSEError(w, "unknown_function", fmt.Sprintf("Unknown function: %s", functionName), http.StatusBadRequest)
+                        return</span>
+                }
+
+                <span class="cov0" title="0">if err != nil </span><span class="cov0" title="0">{
+                        log.Printf("Error executing function %s: %v", functionName, err)
+                        sendSSEError(w, "execution_error", err.Error(), http.StatusInternalServerError)
+                        return
+                }</span>
+
+                // Send the result
+                <span class="cov0" title="0">responseData := map[string]interface{}{
+                        "id":     requestID,
+                        "result": result,
+                }
+                responseJSON, _ := json.Marshal(responseData)
+
+                fmt.Fprintf(w, "data: %s\n\n", responseJSON)
+                w.(http.Flusher).Flush()
+                log.Printf("SSE function result sent: %s", functionName)</span>
+        }
+
+        // Keep the connection alive with periodic heartbeats
+        <span class="cov0" title="0">ticker := time.NewTicker(10 * time.Second)
+        defer ticker.Stop()
+
+        heartbeatCount := 0
+        for </span><span class="cov0" title="0">{
+                select </span>{
+                case &lt;-ticker.C:<span class="cov0" title="0">
+                        // Send heartbeat
+                        heartbeatCount++
+                        fmt.Fprintf(w, "data: {\"type\":\"heartbeat\",\"count\":%d}\n\n", heartbeatCount)
+                        w.(http.Flusher).Flush()
+                        log.Printf("SSE heartbeat sent (%d)", heartbeatCount)</span>
+                case &lt;-clientGone:<span class="cov0" title="0">
+                        // Client disconnected
+                        log.Printf("SSE client disconnected: %s", r.RemoteAddr)
+                        return</span>
+                }
+        }
+}
+
+// sendSSEError sends an error event over the SSE connection
+func sendSSEError(w http.ResponseWriter, errorType, message string, statusCode int) <span class="cov0" title="0">{
+        errorJSON, _ := json.Marshal(map[string]interface{}{
+                "error": map[string]interface{}{
+                        "type":    errorType,
+                        "message": message,
+                        "code":    statusCode,
+                },
+        })
+        fmt.Fprintf(w, "data: %s\n\n", errorJSON)
+        w.(http.Flusher).Flush()
+        log.Printf("SSE error sent: %s - %s", errorType, message)
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package mcp
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "log"
+
+        "github.com/jbrinkman/valkey-ai-tasks/go/internal/models"
+        "github.com/jbrinkman/valkey-ai-tasks/go/internal/storage"
+        "github.com/mark3labs/mcp-go/mcp"
+        "github.com/mark3labs/mcp-go/server"
+)
+
+// MCPGoServer wraps the mark3labs/mcp-go server implementation
+type MCPGoServer struct {
+        server      *server.MCPServer
+        projectRepo storage.ProjectRepository
+        taskRepo    storage.TaskRepository
+}
+
+// NewMCPGoServer creates a new MCP server using the mark3labs/mcp-go library
+func NewMCPGoServer(projectRepo storage.ProjectRepository, taskRepo storage.TaskRepository) *MCPGoServer <span class="cov0" title="0">{
+        // Create a new MCP server
+        s := server.NewMCPServer(
+                "Valkey Feature Planning &amp; Task Management",
+                "1.0.0",
+                server.WithToolCapabilities(true),
+                server.WithRecovery(),
+        )
+
+        mcpServer := &amp;MCPGoServer{
+                server:      s,
+                projectRepo: projectRepo,
+                taskRepo:    taskRepo,
+        }
+
+        // Register all tools
+        mcpServer.registerTools()
+
+        return mcpServer
+}</span>
+
+// Start starts the MCP server using the HTTP transport
+func (s *MCPGoServer) Start(port int) error <span class="cov0" title="0">{
+        log.Printf("Starting MCP server on port %d", port)
+
+        // // Create HTTP server with the MCP server
+        // httpServer := server.NewStreamableHTTPServer(s.server)
+
+        httpServer := server.NewSSEServer(s.server)
+        return httpServer.Start(fmt.Sprintf(":%d", port))
+}</span>
+
+// registerTools registers all the task management tools with the MCP server
+func (s *MCPGoServer) registerTools() <span class="cov0" title="0">{
+        // Project tools
+        s.registerCreateProjectTool()
+        s.registerGetProjectTool()
+        s.registerListProjectsTool()
+        s.registerListProjectsByApplicationTool()
+        s.registerUpdateProjectTool()
+        s.registerDeleteProjectTool()
+
+        // Task tools
+        s.registerCreateTaskTool()
+        s.registerBulkCreateTasksTool() // Add the new bulk create tasks tool
+        s.registerGetTaskTool()
+        s.registerListTasksByProjectTool()
+        s.registerListTasksByStatusTool()
+        s.registerUpdateTaskTool()
+        s.registerDeleteTaskTool()
+        s.registerReorderTaskTool()
+}</span>
+
+// Project tools implementation
+
+func (s *MCPGoServer) registerCreateProjectTool() <span class="cov0" title="0">{
+        tool := mcp.NewTool("create_project",
+                mcp.WithDescription("Create a new project for planning and organizing a feature or initiative"),
+                mcp.WithString("application_id",
+                        mcp.Required(),
+                        mcp.Description("The application ID this project belongs to"),
+                ),
+                mcp.WithString("name",
+                        mcp.Required(),
+                        mcp.Description("Name of the feature or initiative being planned"),
+                ),
+                mcp.WithString("description",
+                        mcp.Description("Detailed description of the feature's goals, requirements, and scope (optional)"),
+                ),
+        )
+
+        s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) </span><span class="cov0" title="0">{
+                // Extract parameters
+                applicationID, err := request.RequireString("application_id")
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(err.Error()), nil
+                }</span>
+
+                <span class="cov0" title="0">name, err := request.RequireString("name")
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(err.Error()), nil
+                }</span>
+
+                <span class="cov0" title="0">description := request.GetString("description", "no description provided")
+
+                // Create the project
+                project, err := s.projectRepo.Create(ctx, applicationID, name, description)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to create project: %v", err)), nil
+                }</span>
+
+                <span class="cov0" title="0">projectJson, err := json.Marshal(project)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal project: %v", err)), nil
+                }</span>
+                <span class="cov0" title="0">return mcp.NewToolResultText(string(projectJson)), nil</span>
+        })
+}
+
+func (s *MCPGoServer) registerGetProjectTool() <span class="cov0" title="0">{
+        tool := mcp.NewTool("get_project",
+                mcp.WithDescription("Retrieve details about a specific feature planning project"),
+                mcp.WithString("id",
+                        mcp.Required(),
+                        mcp.Description("Project ID"),
+                ),
+        )
+
+        s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) </span><span class="cov0" title="0">{
+                id, err := request.RequireString("id")
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(err.Error()), nil
+                }</span>
+
+                <span class="cov0" title="0">project, err := s.projectRepo.Get(ctx, id)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to get project: %v", err)), nil
+                }</span>
+
+                <span class="cov0" title="0">projectJson, err := json.Marshal(project)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal project: %v", err)), nil
+                }</span>
+                <span class="cov0" title="0">return mcp.NewToolResultText(string(projectJson)), nil</span>
+        })
+}
+
+func (s *MCPGoServer) registerListProjectsTool() <span class="cov0" title="0">{
+        tool := mcp.NewTool("list_projects",
+                mcp.WithDescription("List all available feature planning projects"),
+        )
+
+        s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) </span><span class="cov0" title="0">{
+                projects, err := s.projectRepo.List(ctx)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to list projects: %v", err)), nil
+                }</span>
+
+                <span class="cov0" title="0">projectsJson, err := json.Marshal(projects)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal projects: %v", err)), nil
+                }</span>
+                <span class="cov0" title="0">return mcp.NewToolResultText(string(projectsJson)), nil</span>
+        })
+}
+
+func (s *MCPGoServer) registerListProjectsByApplicationTool() <span class="cov0" title="0">{
+        tool := mcp.NewTool("list_projects_by_application",
+                mcp.WithDescription("List all feature planning projects for a specific application"),
+                mcp.WithString("application_id",
+                        mcp.Required(),
+                        mcp.Description("Application ID to filter projects by"),
+                ),
+        )
+
+        s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) </span><span class="cov0" title="0">{
+                applicationID, err := request.RequireString("application_id")
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(err.Error()), nil
+                }</span>
+
+                <span class="cov0" title="0">projects, err := s.projectRepo.ListByApplication(ctx, applicationID)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to list projects by application: %v", err)), nil
+                }</span>
+
+                <span class="cov0" title="0">projectsJson, err := json.Marshal(projects)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal projects: %v", err)), nil
+                }</span>
+                <span class="cov0" title="0">return mcp.NewToolResultText(string(projectsJson)), nil</span>
+        })
+}
+
+func (s *MCPGoServer) registerUpdateProjectTool() <span class="cov0" title="0">{
+        tool := mcp.NewTool("update_project",
+                mcp.WithDescription("Update the details or scope of a feature planning project"),
+                mcp.WithString("id",
+                        mcp.Required(),
+                        mcp.Description("Project ID"),
+                ),
+                mcp.WithString("name",
+                        mcp.Description("New project name (optional)"),
+                ),
+                mcp.WithString("description",
+                        mcp.Description("New project description (optional)"),
+                ),
+        )
+
+        s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) </span><span class="cov0" title="0">{
+                id, err := request.RequireString("id")
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(err.Error()), nil
+                }</span>
+
+                // Get the existing project
+                <span class="cov0" title="0">project, err := s.projectRepo.Get(ctx, id)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to get project: %v", err)), nil
+                }</span>
+
+                // Update fields if provided
+                <span class="cov0" title="0">name := request.GetString("name", project.Name)
+                if name != project.Name </span><span class="cov0" title="0">{
+                        project.Name = name
+                }</span>
+
+                <span class="cov0" title="0">description := request.GetString("description", project.Description)
+                if description != project.Description </span><span class="cov0" title="0">{
+                        project.Description = description
+                }</span>
+
+                // Save the updated project
+                <span class="cov0" title="0">err = s.projectRepo.Update(ctx, project)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to update project: %v", err)), nil
+                }</span>
+
+                <span class="cov0" title="0">projectJson, err := json.Marshal(project)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal project: %v", err)), nil
+                }</span>
+                <span class="cov0" title="0">return mcp.NewToolResultText(string(projectJson)), nil</span>
+        })
+}
+
+func (s *MCPGoServer) registerDeleteProjectTool() <span class="cov0" title="0">{
+        tool := mcp.NewTool("delete_project",
+                mcp.WithDescription("Remove a completed or cancelled feature planning project"),
+                mcp.WithString("id",
+                        mcp.Required(),
+                        mcp.Description("Project ID"),
+                ),
+        )
+
+        s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) </span><span class="cov0" title="0">{
+                id, err := request.RequireString("id")
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(err.Error()), nil
+                }</span>
+
+                <span class="cov0" title="0">err = s.projectRepo.Delete(ctx, id)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to delete project: %v", err)), nil
+                }</span>
+
+                <span class="cov0" title="0">return mcp.NewToolResultText("Project deleted"), nil</span>
+        })
+}
+
+// Task tools implementation
+
+func (s *MCPGoServer) registerCreateTaskTool() <span class="cov0" title="0">{
+        tool := mcp.NewTool("create_task",
+                mcp.WithDescription("Create a new task as part of a feature implementation plan"),
+                mcp.WithString("project_id",
+                        mcp.Required(),
+                        mcp.Description("Project ID this task belongs to"),
+                ),
+                mcp.WithString("title",
+                        mcp.Required(),
+                        mcp.Description("Concise description of this implementation step"),
+                ),
+                mcp.WithString("description",
+                        mcp.Description("Detailed explanation of what needs to be done, acceptance criteria, or implementation notes"),
+                ),
+                mcp.WithString("status",
+                        mcp.Description("Current implementation status of this task (optional, defaults to 'pending')"),
+                        mcp.Enum("pending", "in_progress", "completed", "cancelled"),
+                ),
+                mcp.WithString("priority",
+                        mcp.Description("Importance and urgency of this task in the overall feature implementation plan (optional, defaults to 'medium')"),
+                        mcp.Enum("low", "medium", "high"),
+                ),
+        )
+
+        s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) </span><span class="cov0" title="0">{
+                projectID, err := request.RequireString("project_id")
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(err.Error()), nil
+                }</span>
+
+                <span class="cov0" title="0">title, err := request.RequireString("title")
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(err.Error()), nil
+                }</span>
+
+                <span class="cov0" title="0">description := request.GetString("description", "no description provided")
+
+                priorityStr := request.GetString("priority", string(models.TaskPriorityMedium))
+                priority := models.TaskPriority(priorityStr)
+
+                task, err := s.taskRepo.Create(ctx, projectID, title, description, priority)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to create task: %v", err)), nil
+                }</span>
+
+                <span class="cov0" title="0">taskJson, err := json.Marshal(task)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal task: %v", err)), nil
+                }</span>
+                <span class="cov0" title="0">return mcp.NewToolResultText(string(taskJson)), nil</span>
+        })
+}
+
+func (s *MCPGoServer) registerGetTaskTool() <span class="cov0" title="0">{
+        tool := mcp.NewTool("get_task",
+                mcp.WithDescription("Retrieve details about a specific planned task"),
+                mcp.WithString("id",
+                        mcp.Required(),
+                        mcp.Description("Task ID"),
+                ),
+        )
+
+        s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) </span><span class="cov0" title="0">{
+                id, err := request.RequireString("id")
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(err.Error()), nil
+                }</span>
+
+                <span class="cov0" title="0">task, err := s.taskRepo.Get(ctx, id)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to get task: %v", err)), nil
+                }</span>
+
+                <span class="cov0" title="0">taskJson, err := json.Marshal(task)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal task: %v", err)), nil
+                }</span>
+                <span class="cov0" title="0">return mcp.NewToolResultText(string(taskJson)), nil</span>
+        })
+}
+
+func (s *MCPGoServer) registerListTasksByProjectTool() <span class="cov0" title="0">{
+        tool := mcp.NewTool("list_tasks_by_project",
+                mcp.WithDescription("List all tasks in a feature implementation plan"),
+                mcp.WithString("project_id",
+                        mcp.Required(),
+                        mcp.Description("Project ID to filter tasks by"),
+                ),
+        )
+
+        s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) </span><span class="cov0" title="0">{
+                projectID, err := request.RequireString("project_id")
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(err.Error()), nil
+                }</span>
+
+                <span class="cov0" title="0">tasks, err := s.taskRepo.ListByProject(ctx, projectID)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to list tasks by project: %v", err)), nil
+                }</span>
+
+                <span class="cov0" title="0">tasksJson, err := json.Marshal(tasks)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal tasks: %v", err)), nil
+                }</span>
+                <span class="cov0" title="0">return mcp.NewToolResultText(string(tasksJson)), nil</span>
+        })
+}
+
+func (s *MCPGoServer) registerListTasksByStatusTool() <span class="cov0" title="0">{
+        tool := mcp.NewTool("list_tasks_by_status",
+                mcp.WithDescription("Find tasks by their current status (pending, in progress, completed, cancelled)"),
+                mcp.WithString("status",
+                        mcp.Required(),
+                        mcp.Description("Task status to filter by"),
+                        mcp.Enum("pending", "in_progress", "completed", "cancelled"),
+                ),
+        )
+
+        s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) </span><span class="cov0" title="0">{
+                statusStr, err := request.RequireString("status")
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(err.Error()), nil
+                }</span>
+
+                <span class="cov0" title="0">status := models.TaskStatus(statusStr)
+                tasks, err := s.taskRepo.ListByStatus(ctx, status)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to list tasks by status: %v", err)), nil
+                }</span>
+
+                <span class="cov0" title="0">tasksJson, err := json.Marshal(tasks)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal tasks: %v", err)), nil
+                }</span>
+                <span class="cov0" title="0">return mcp.NewToolResultText(string(tasksJson)), nil</span>
+        })
+}
+
+func (s *MCPGoServer) registerUpdateTaskTool() <span class="cov0" title="0">{
+        tool := mcp.NewTool("update_task",
+                mcp.WithDescription("Update the details, status, or priority of a planned task"),
+                mcp.WithString("id",
+                        mcp.Required(),
+                        mcp.Description("Task ID"),
+                ),
+                mcp.WithString("title",
+                        mcp.Description("New task title (optional)"),
+                ),
+                mcp.WithString("description",
+                        mcp.Description("New task description (optional)"),
+                ),
+                mcp.WithString("status",
+                        mcp.Description("New task status (optional)"),
+                        mcp.Enum("pending", "in_progress", "completed", "cancelled"),
+                ),
+                mcp.WithString("priority",
+                        mcp.Description("New task priority (optional)"),
+                        mcp.Enum("low", "medium", "high"),
+                ),
+        )
+
+        s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) </span><span class="cov0" title="0">{
+                id, err := request.RequireString("id")
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(err.Error()), nil
+                }</span>
+
+                // Get the existing task
+                <span class="cov0" title="0">task, err := s.taskRepo.Get(ctx, id)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to get task: %v", err)), nil
+                }</span>
+
+                // Update fields if provided
+                <span class="cov0" title="0">title := request.GetString("title", task.Title)
+                if title != task.Title </span><span class="cov0" title="0">{
+                        task.Title = title
+                }</span>
+
+                <span class="cov0" title="0">description := request.GetString("description", task.Description)
+                if description != task.Description </span><span class="cov0" title="0">{
+                        task.Description = description
+                }</span>
+
+                <span class="cov0" title="0">statusStr := request.GetString("status", string(task.Status))
+                task.Status = models.TaskStatus(statusStr)
+
+                priorityStr := request.GetString("priority", string(task.Priority))
+                task.Priority = models.TaskPriority(priorityStr)
+
+                // Save the updated task
+                err = s.taskRepo.Update(ctx, task)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to update task: %v", err)), nil
+                }</span>
+
+                <span class="cov0" title="0">taskJson, err := json.Marshal(task)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal task: %v", err)), nil
+                }</span>
+                <span class="cov0" title="0">return mcp.NewToolResultText(string(taskJson)), nil</span>
+        })
+}
+
+func (s *MCPGoServer) registerDeleteTaskTool() <span class="cov0" title="0">{
+        tool := mcp.NewTool("delete_task",
+                mcp.WithDescription("Remove a task from a feature implementation plan"),
+                mcp.WithString("id",
+                        mcp.Required(),
+                        mcp.Description("Task ID"),
+                ),
+        )
+
+        s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) </span><span class="cov0" title="0">{
+                id, err := request.RequireString("id")
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(err.Error()), nil
+                }</span>
+
+                <span class="cov0" title="0">err = s.taskRepo.Delete(ctx, id)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to delete task: %v", err)), nil
+                }</span>
+
+                <span class="cov0" title="0">return mcp.NewToolResultText("Task deleted"), nil</span>
+        })
+}
+
+func (s *MCPGoServer) registerBulkCreateTasksTool() <span class="cov0" title="0">{
+        tool := mcp.NewTool("bulk_create_tasks",
+                mcp.WithDescription("Create multiple tasks at once for a feature implementation plan"),
+                mcp.WithString("project_id",
+                        mcp.Required(),
+                        mcp.Description("Project ID these tasks belong to"),
+                ),
+                mcp.WithString("tasks_json",
+                        mcp.Required(),
+                        mcp.Description("JSON string containing an array of task definitions, each containing title (required), description (optional), status (optional), and priority (optional)"),
+                ),
+        )
+
+        s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) </span><span class="cov0" title="0">{
+                // Extract project ID
+                projectID, err := request.RequireString("project_id")
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(err.Error()), nil
+                }</span>
+
+                // Extract tasks JSON string
+                <span class="cov0" title="0">tasksJSON, err := request.RequireString("tasks_json")
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(err.Error()), nil
+                }</span>
+
+                // Unmarshal into a slice of maps
+                <span class="cov0" title="0">var tasksArray []map[string]interface{}
+                err = json.Unmarshal([]byte(tasksJSON), &amp;tasksArray)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to parse tasks JSON: %v", err)), nil
+                }</span>
+
+                // Convert tasks array to TaskCreateInput slice
+                <span class="cov0" title="0">taskInputs := make([]storage.TaskCreateInput, 0, len(tasksArray))
+                for _, taskMap := range tasksArray </span><span class="cov0" title="0">{
+                        // Extract title (required)
+                        titleRaw, ok := taskMap["title"]
+                        if !ok </span><span class="cov0" title="0">{
+                                return mcp.NewToolResultError("Task title is required"), nil
+                        }</span>
+
+                        <span class="cov0" title="0">title, ok := titleRaw.(string)
+                        if !ok || title == "" </span><span class="cov0" title="0">{
+                                return mcp.NewToolResultError("Task title must be a non-empty string"), nil
+                        }</span>
+
+                        // Extract optional fields
+                        <span class="cov0" title="0">description := ""
+                        if descRaw, ok := taskMap["description"]; ok </span><span class="cov0" title="0">{
+                                if desc, ok := descRaw.(string); ok </span><span class="cov0" title="0">{
+                                        description = desc
+                                }</span>
+                        }
+
+                        <span class="cov0" title="0">statusStr := ""
+                        if statusRaw, ok := taskMap["status"]; ok </span><span class="cov0" title="0">{
+                                if status, ok := statusRaw.(string); ok </span><span class="cov0" title="0">{
+                                        statusStr = status
+                                }</span>
+                        }
+
+                        <span class="cov0" title="0">priorityStr := ""
+                        if priorityRaw, ok := taskMap["priority"]; ok </span><span class="cov0" title="0">{
+                                if priority, ok := priorityRaw.(string); ok </span><span class="cov0" title="0">{
+                                        priorityStr = priority
+                                }</span>
+                        }
+
+                        // Validate status if provided
+                        <span class="cov0" title="0">if statusStr != "" </span><span class="cov0" title="0">{
+                                validStatus := false
+                                for _, s := range []string{"pending", "in_progress", "completed", "cancelled"} </span><span class="cov0" title="0">{
+                                        if statusStr == s </span><span class="cov0" title="0">{
+                                                validStatus = true
+                                                break</span>
+                                        }
+                                }
+                                <span class="cov0" title="0">if !validStatus </span><span class="cov0" title="0">{
+                                        return mcp.NewToolResultError(fmt.Sprintf("Invalid status: %s", statusStr)), nil
+                                }</span>
+                        }
+
+                        // Validate priority if provided
+                        <span class="cov0" title="0">if priorityStr != "" </span><span class="cov0" title="0">{
+                                validPriority := false
+                                for _, p := range []string{"low", "medium", "high"} </span><span class="cov0" title="0">{
+                                        if priorityStr == p </span><span class="cov0" title="0">{
+                                                validPriority = true
+                                                break</span>
+                                        }
+                                }
+                                <span class="cov0" title="0">if !validPriority </span><span class="cov0" title="0">{
+                                        return mcp.NewToolResultError(fmt.Sprintf("Invalid priority: %s", priorityStr)), nil
+                                }</span>
+                        }
+
+                        // Create task input
+                        <span class="cov0" title="0">taskInput := storage.TaskCreateInput{
+                                Title:       title,
+                                Description: description,
+                                Status:      models.TaskStatus(statusStr),
+                                Priority:    models.TaskPriority(priorityStr),
+                        }
+
+                        taskInputs = append(taskInputs, taskInput)</span>
+                }
+
+                // Create tasks in bulk
+                <span class="cov0" title="0">createdTasks, err := s.taskRepo.CreateBulk(ctx, projectID, taskInputs)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to create tasks: %v", err)), nil
+                }</span>
+
+                // Return created tasks
+                <span class="cov0" title="0">tasksJson, err := json.Marshal(createdTasks)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal tasks: %v", err)), nil
+                }</span>
+                <span class="cov0" title="0">return mcp.NewToolResultText(string(tasksJson)), nil</span>
+        })
+}
+
+func (s *MCPGoServer) registerReorderTaskTool() <span class="cov0" title="0">{
+        tool := mcp.NewTool("reorder_task",
+                mcp.WithDescription("Change the sequence of tasks in a feature implementation plan"),
+                mcp.WithString("id",
+                        mcp.Required(),
+                        mcp.Description("Task ID"),
+                ),
+                mcp.WithNumber("new_order",
+                        mcp.Required(),
+                        mcp.Description("New order position for the task"),
+                ),
+        )
+
+        s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) </span><span class="cov0" title="0">{
+                id, err := request.RequireString("id")
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(err.Error()), nil
+                }</span>
+
+                <span class="cov0" title="0">newOrderFloat, err := request.RequireFloat("new_order")
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(err.Error()), nil
+                }</span>
+                <span class="cov0" title="0">newOrder := int(newOrderFloat)
+
+                err = s.taskRepo.ReorderTask(ctx, id, newOrder)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to reorder task: %v", err)), nil
+                }</span>
+
+                // Get the updated task
+                <span class="cov0" title="0">task, err := s.taskRepo.Get(ctx, id)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to get updated task: %v", err)), nil
+                }</span>
+
+                <span class="cov0" title="0">taskJson, err := json.Marshal(task)
+                if err != nil </span><span class="cov0" title="0">{
+                        return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal task: %v", err)), nil
+                }</span>
+                <span class="cov0" title="0">return mcp.NewToolResultText(string(taskJson)), nil</span>
+        })
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package models
+
+import (
+        "time"
+)
+
+// Project represents a collection of related tasks
+type Project struct {
+        ID            string    `json:"id"`
+        ApplicationID string    `json:"application_id"` // Added field for application association
+        Name          string    `json:"name"`
+        Description   string    `json:"description"`
+        CreatedAt     time.Time `json:"created_at"`
+        UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// NewProject creates a new project with the given name and description
+func NewProject(id, applicationID, name, description string) *Project <span class="cov0" title="0">{
+        now := time.Now()
+        return &amp;Project{
+                ID:            id,
+                ApplicationID: applicationID,
+                Name:          name,
+                Description:   description,
+                CreatedAt:     now,
+                UpdatedAt:     now,
+        }
+}</span>
+
+// ToMap converts the project to a map for storage in Valkey
+func (p *Project) ToMap() map[string]string <span class="cov0" title="0">{
+        return map[string]string{
+                "id":             p.ID,
+                "application_id": p.ApplicationID,
+                "name":           p.Name,
+                "description":    p.Description,
+                "created_at":     p.CreatedAt.Format(time.RFC3339),
+                "updated_at":     p.UpdatedAt.Format(time.RFC3339),
+        }
+}</span>
+
+// FromMap populates a project from a map retrieved from Valkey
+func (p *Project) FromMap(data map[string]string) error <span class="cov0" title="0">{
+        p.ID = data["id"]
+        p.ApplicationID = data["application_id"]
+        p.Name = data["name"]
+        p.Description = data["description"]
+
+        createdAt, err := time.Parse(time.RFC3339, data["created_at"])
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">p.CreatedAt = createdAt
+
+        updatedAt, err := time.Parse(time.RFC3339, data["updated_at"])
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">p.UpdatedAt = updatedAt
+
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package models
+
+import (
+        "fmt"
+        "time"
+)
+
+// TaskStatus represents the current status of a task
+type TaskStatus string
+
+const (
+        TaskStatusPending    TaskStatus = "pending"
+        TaskStatusInProgress TaskStatus = "in_progress"
+        TaskStatusCompleted  TaskStatus = "completed"
+        TaskStatusCancelled  TaskStatus = "cancelled"
+)
+
+// TaskPriority represents the priority level of a task
+type TaskPriority string
+
+const (
+        TaskPriorityLow    TaskPriority = "low"
+        TaskPriorityMedium TaskPriority = "medium"
+        TaskPriorityHigh   TaskPriority = "high"
+)
+
+// Task represents an individual task within a project
+type Task struct {
+        ID          string       `json:"id"`
+        ProjectID   string       `json:"project_id"`
+        Title       string       `json:"title"`
+        Description string       `json:"description"`
+        Status      TaskStatus   `json:"status"`
+        Priority    TaskPriority `json:"priority"`
+        Order       int          `json:"order"`
+        CreatedAt   time.Time    `json:"created_at"`
+        UpdatedAt   time.Time    `json:"updated_at"`
+}
+
+// NewTask creates a new task with the given details
+func NewTask(id, projectID, title, description string, priority TaskPriority) *Task <span class="cov0" title="0">{
+        now := time.Now()
+        return &amp;Task{
+                ID:          id,
+                ProjectID:   projectID,
+                Title:       title,
+                Description: description,
+                Status:      TaskStatusPending,
+                Priority:    priority,
+                Order:       0, // Will be set when added to the project
+                CreatedAt:   now,
+                UpdatedAt:   now,
+        }
+}</span>
+
+// ToMap converts the task to a map for storage in Valkey
+func (t *Task) ToMap() map[string]string <span class="cov0" title="0">{
+        return map[string]string{
+                "id":          t.ID,
+                "project_id":  t.ProjectID,
+                "title":       t.Title,
+                "description": t.Description,
+                "status":      string(t.Status),
+                "priority":    string(t.Priority),
+                "order":       fmt.Sprintf("%d", t.Order),
+                "created_at":  t.CreatedAt.Format(time.RFC3339),
+                "updated_at":  t.UpdatedAt.Format(time.RFC3339),
+        }
+}</span>
+
+// FromMap populates a task from a map retrieved from Valkey
+func (t *Task) FromMap(data map[string]string) error <span class="cov0" title="0">{
+        t.ID = data["id"]
+        t.ProjectID = data["project_id"]
+        t.Title = data["title"]
+        t.Description = data["description"]
+        t.Status = TaskStatus(data["status"])
+        t.Priority = TaskPriority(data["priority"])
+
+        order := 0
+        if data["order"] != "" </span><span class="cov0" title="0">{
+                // Convert string to int
+                _, err := fmt.Sscanf(data["order"], "%d", &amp;order)
+                if err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        }
+        <span class="cov0" title="0">t.Order = order
+
+        createdAt, err := time.Parse(time.RFC3339, data["created_at"])
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">t.CreatedAt = createdAt
+
+        updatedAt, err := time.Parse(time.RFC3339, data["updated_at"])
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">t.UpdatedAt = updatedAt
+
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package storage
+
+import (
+        "context"
+        "fmt"
+        "time"
+
+        uuid "github.com/google/uuid"
+        "github.com/jbrinkman/valkey-ai-tasks/go/internal/models"
+        "github.com/valkey-io/valkey-glide/go/v2/options"
+)
+
+// ProjectRepository handles storage operations for projects
+type ProjectRepository struct {
+        client *ValkeyClient
+}
+
+// NewProjectRepository creates a new project repository
+func NewProjectRepository(client *ValkeyClient) *ProjectRepository <span class="cov0" title="0">{
+        return &amp;ProjectRepository{
+                client: client,
+        }
+}</span>
+
+// Create adds a new project to the storage
+func (r *ProjectRepository) Create(ctx context.Context, applicationID, name, description string) (*models.Project, error) <span class="cov0" title="0">{
+        // Generate a unique ID for the project
+        id := uuid.New().String()
+
+        // Create a new project
+        project := models.NewProject(id, applicationID, name, description)
+
+        // Store the project in Valkey
+        projectKey := GetProjectKey(id)
+        _, err := r.client.client.HSet(ctx, projectKey, project.ToMap())
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to store project: %w", err)
+        }</span>
+
+        // Add project ID to the projects list
+        <span class="cov0" title="0">_, err = r.client.client.SAdd(ctx, projectsListKey, []string{id})
+        if err != nil </span><span class="cov0" title="0">{
+                // Try to clean up the project if adding to the set fails
+                r.client.client.Del(ctx, []string{projectKey})
+                return nil, fmt.Errorf("failed to add project to list: %w", err)
+        }</span>
+
+        // Add project ID to the application-specific projects list
+        <span class="cov0" title="0">appProjectsKey := fmt.Sprintf("app:%s:projects", applicationID)
+        _, err = r.client.client.SAdd(ctx, appProjectsKey, []string{id})
+        if err != nil </span><span class="cov0" title="0">{
+                // Log the error but don't fail the operation
+                fmt.Printf("Warning: failed to add project to application list: %v\n", err)
+        }</span>
+
+        <span class="cov0" title="0">return project, nil</span>
+}
+
+// Get retrieves a project by ID
+func (r *ProjectRepository) Get(ctx context.Context, id string) (*models.Project, error) <span class="cov0" title="0">{
+        // Get the project from Valkey
+        projectKey := GetProjectKey(id)
+        data, err := r.client.client.HGetAll(ctx, projectKey)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get project: %w", err)
+        }</span>
+
+        // Check if the project exists
+        <span class="cov0" title="0">if len(data) == 0 </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("project not found: %s", id)
+        }</span>
+
+        // Convert data to project
+        <span class="cov0" title="0">project := &amp;models.Project{}
+        err = project.FromMap(data)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to parse project data: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return project, nil</span>
+}
+
+// Update updates an existing project
+func (r *ProjectRepository) Update(ctx context.Context, project *models.Project) error <span class="cov0" title="0">{
+        // Check if the project exists
+        exists, err := r.client.client.SIsMember(ctx, projectsListKey, project.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get result: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if !exists </span><span class="cov0" title="0">{
+                return fmt.Errorf("project not found: %s", project.ID)
+        }</span>
+
+        // Update the project's updated_at timestamp
+        <span class="cov0" title="0">project.UpdatedAt = time.Now()
+
+        // Store the updated project
+        projectKey := GetProjectKey(project.ID)
+        _, err = r.client.client.HSet(ctx, projectKey, project.ToMap())
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to update project: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Delete removes a project and all its tasks
+func (r *ProjectRepository) Delete(ctx context.Context, id string) error <span class="cov0" title="0">{
+        // Check if the project exists
+        exists, err := r.client.client.SIsMember(ctx, projectsListKey, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get result: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if !exists </span><span class="cov0" title="0">{
+                return fmt.Errorf("project not found: %s", id)
+        }</span>
+
+        // Get the project's tasks
+        <span class="cov0" title="0">projectTasksKey := GetProjectTasksKey(id)
+        opts := options.NewRangeByIndexQuery(0, -1)
+        taskIDs, err := r.client.client.ZRange(ctx, projectTasksKey, opts)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get result: %w", err)
+        }</span>
+
+        // Delete all tasks
+        <span class="cov0" title="0">for _, taskID := range taskIDs </span><span class="cov0" title="0">{
+                taskKey := GetTaskKey(taskID)
+                _, err := r.client.client.Del(ctx, []string{taskKey})
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to delete task %s: %w", taskID, err)
+                }</span>
+        }
+
+        // Delete the project's tasks list
+        <span class="cov0" title="0">_, err = r.client.client.Del(ctx, []string{projectTasksKey})
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to delete project tasks list: %w", err)
+        }</span>
+
+        // Delete the project
+        <span class="cov0" title="0">projectKey := GetProjectKey(id)
+        _, err = r.client.client.Del(ctx, []string{projectKey})
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to delete project: %w", err)
+        }</span>
+
+        // Remove project from the projects list
+        <span class="cov0" title="0">_, err = r.client.client.SRem(ctx, projectsListKey, []string{id})
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to remove project from list: %w", err)
+        }</span>
+
+        // Remove project from the application-specific projects list
+        <span class="cov0" title="0">appProjectsKey := fmt.Sprintf("app:%s:projects", id)
+        _, err = r.client.client.SRem(ctx, appProjectsKey, []string{id})
+        if err != nil </span><span class="cov0" title="0">{
+                // Log the error but don't fail the operation
+                fmt.Printf("Warning: failed to remove project from application list: %v\n", err)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// List returns all projects
+func (r *ProjectRepository) List(ctx context.Context) ([]*models.Project, error) <span class="cov0" title="0">{
+        // Get all project IDs
+        projectIDs, err := r.client.client.SMembers(ctx, projectsListKey)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get project list: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">projects := make([]*models.Project, 0, len(projectIDs))
+
+        // Get each project
+        for id, _ := range projectIDs </span><span class="cov0" title="0">{
+                project, err := r.Get(ctx, id)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to get project %s: %w", id, err)
+                }</span>
+                <span class="cov0" title="0">projects = append(projects, project)</span>
+        }
+
+        <span class="cov0" title="0">return projects, nil</span>
+}
+
+// ListByApplication retrieves all projects for a specific application
+func (r *ProjectRepository) ListByApplication(ctx context.Context, applicationID string) ([]*models.Project, error) <span class="cov0" title="0">{
+        // Get the list of project IDs for this application
+        appProjectsKey := fmt.Sprintf("app:%s:projects", applicationID)
+        projectIDs, err := r.client.client.SMembers(ctx, appProjectsKey)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get application project IDs: %w", err)
+        }</span>
+
+        // If there are no projects, return an empty slice
+        <span class="cov0" title="0">if len(projectIDs) == 0 </span><span class="cov0" title="0">{
+                return []*models.Project{}, nil
+        }</span>
+
+        <span class="cov0" title="0">projects := make([]*models.Project, 0, len(projectIDs))
+
+        // Retrieve each project
+        for id := range projectIDs </span><span class="cov0" title="0">{
+                projectKey := GetProjectKey(id)
+                projectData, err := r.client.client.HGetAll(ctx, projectKey)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to get project %s: %w", id, err)
+                }</span>
+
+                // Skip if the project doesn't exist
+                <span class="cov0" title="0">if len(projectData) == 0 </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+
+                // Create a project from the data
+                <span class="cov0" title="0">project := &amp;models.Project{}
+                if err := project.FromMap(projectData); err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to parse project %s: %w", id, err)
+                }</span>
+
+                <span class="cov0" title="0">projects = append(projects, project)</span>
+        }
+
+        <span class="cov0" title="0">return projects, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package storage
+
+import (
+        "context"
+        "fmt"
+        "time"
+
+        "github.com/google/uuid"
+        "github.com/jbrinkman/valkey-ai-tasks/go/internal/models"
+        "github.com/valkey-io/valkey-glide/go/v2/options"
+)
+
+// TaskRepository handles storage operations for tasks
+type TaskRepository struct {
+        client *ValkeyClient
+}
+
+// TaskCreateInput represents the input data for creating a task
+type TaskCreateInput struct {
+        Title       string              `json:"title"`
+        Description string              `json:"description"`
+        Status      models.TaskStatus   `json:"status"`
+        Priority    models.TaskPriority `json:"priority"`
+}
+
+// NewTaskRepository creates a new task repository
+func NewTaskRepository(client *ValkeyClient) *TaskRepository <span class="cov0" title="0">{
+        return &amp;TaskRepository{
+                client: client,
+        }
+}</span>
+
+// Create adds a new task to a project
+func (r *TaskRepository) Create(ctx context.Context, projectID, title, description string, priority models.TaskPriority) (*models.Task, error) <span class="cov0" title="0">{
+        // Check if the project exists
+        exists, err := r.client.client.SIsMember(ctx, projectsListKey, projectID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get result: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if !exists </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("project not found: %s", projectID)
+        }</span>
+
+        // Generate a unique ID for the task
+        <span class="cov0" title="0">id := uuid.New().String()
+
+        // Create a new task
+        task := models.NewTask(id, projectID, title, description, priority)
+
+        // Get the next order value for the task
+        projectTasksKey := GetProjectTasksKey(projectID)
+        count, err := r.client.client.ZCard(ctx, projectTasksKey)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get task count: %w", err)
+        }</span>
+
+        // Set the order to be the last task in the list
+        <span class="cov0" title="0">task.Order = int(count)
+
+        // Store the task in Valkey
+        taskKey := GetTaskKey(id)
+        _, err = r.client.client.HSet(ctx, taskKey, task.ToMap())
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to store task: %w", err)
+        }</span>
+
+        // Add task to the project's tasks list with its order as the score
+        <span class="cov0" title="0">_, err = r.client.client.ZAdd(ctx, projectTasksKey, map[string]float64{id: float64(task.Order)})
+        if err != nil </span><span class="cov0" title="0">{
+                // Try to clean up the task if adding to the sorted set fails
+                r.client.client.Del(ctx, []string{taskKey})
+                return nil, fmt.Errorf("failed to add task to project: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return task, nil</span>
+}
+
+// Get retrieves a task by ID
+func (r *TaskRepository) Get(ctx context.Context, id string) (*models.Task, error) <span class="cov0" title="0">{
+        // Get the task from Valkey
+        taskKey := GetTaskKey(id)
+        data, err := r.client.client.HGetAll(ctx, taskKey)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get task: %w", err)
+        }</span>
+
+        // Check if the task exists
+        <span class="cov0" title="0">if len(data) == 0 </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("task not found: %s", id)
+        }</span>
+
+        // Convert data to task
+        <span class="cov0" title="0">task := &amp;models.Task{}
+        err = task.FromMap(data)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to parse task data: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return task, nil</span>
+}
+
+// Update updates an existing task
+func (r *TaskRepository) Update(ctx context.Context, task *models.Task) error <span class="cov0" title="0">{
+        // Check if the task exists
+        taskKey := GetTaskKey(task.ID)
+        exists, err := r.client.client.Exists(ctx, []string{taskKey})
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to check if task exists: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if exists == 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("task not found: %s", task.ID)
+        }</span>
+
+        // Get the current task to check if the project ID has changed
+        <span class="cov0" title="0">currentTask, err := r.Get(ctx, task.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get current task: %w", err)
+        }</span>
+
+        // Update the task's updated_at timestamp
+        <span class="cov0" title="0">task.UpdatedAt = time.Now()
+
+        // Store the updated task
+        _, err = r.client.client.HSet(ctx, taskKey, task.ToMap())
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to update task: %w", err)
+        }</span>
+
+        // If the project ID has changed, move the task to the new project
+        <span class="cov0" title="0">if currentTask.ProjectID != task.ProjectID </span><span class="cov0" title="0">{
+                // Remove from the old project's tasks list
+                oldProjectTasksKey := GetProjectTasksKey(currentTask.ProjectID)
+                _, err = r.client.client.ZRem(ctx, oldProjectTasksKey, []string{task.ID})
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to remove task from old project: %w", err)
+                }</span>
+
+                // Add to the new project's tasks list
+                <span class="cov0" title="0">newProjectTasksKey := GetProjectTasksKey(task.ProjectID)
+                count, err := r.client.client.ZCard(ctx, newProjectTasksKey)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to get task count for new project: %w", err)
+                }</span>
+
+                // Set the order to be the last task in the new project
+                <span class="cov0" title="0">task.Order = int(count)
+
+                // Update the task with the new order
+                _, err = r.client.client.HSet(ctx, taskKey, task.ToMap())
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to update task: %w", err)
+                }</span>
+
+                // Set the order to be the last task in the new project
+                <span class="cov0" title="0">task.Order = int(count)
+
+                // Update the task with the new order
+                _, err = r.client.client.HSet(ctx, taskKey, task.ToMap())
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to update task: %w", err)
+                }</span>
+
+                // Add to the new project's tasks list
+                <span class="cov0" title="0">_, err = r.client.client.ZAdd(ctx, newProjectTasksKey, map[string]float64{task.ID: float64(task.Order)})
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to add task to new project: %w", err)
+                }</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Delete removes a task
+func (r *TaskRepository) Delete(ctx context.Context, id string) error <span class="cov0" title="0">{
+        // Get the task to find its project ID
+        task, err := r.Get(ctx, id)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // Remove the task from the project's tasks list
+        <span class="cov0" title="0">projectTasksKey := GetProjectTasksKey(task.ProjectID)
+        _, err = r.client.client.ZRem(ctx, projectTasksKey, []string{id})
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to remove task from project list: %w", err)
+        }</span>
+
+        // Delete the task
+        <span class="cov0" title="0">taskKey := GetTaskKey(id)
+        _, err = r.client.client.Del(ctx, []string{taskKey})
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to delete task: %w", err)
+        }</span>
+
+        // Reorder the remaining tasks in the project
+        <span class="cov0" title="0">return r.reorderProjectTasks(ctx, task.ProjectID)</span>
+}
+
+// ListByProject returns all tasks for a project, ordered by their sequence
+func (r *TaskRepository) ListByProject(ctx context.Context, projectID string) ([]*models.Task, error) <span class="cov0" title="0">{
+        // Check if the project exists
+        exists, err := r.client.client.SIsMember(ctx, projectsListKey, projectID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to check if project exists: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if !exists </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("project not found: %s", projectID)
+        }</span>
+
+        // Get all task IDs for this project
+        <span class="cov0" title="0">projectTasksKey := GetProjectTasksKey(projectID)
+        opts := options.NewRangeByIndexQuery(0, -1)
+        taskIDs, err := r.client.client.ZRange(ctx, projectTasksKey, opts)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get project tasks: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">tasks := make([]*models.Task, 0, len(taskIDs))
+
+        // Get each task
+        for _, id := range taskIDs </span><span class="cov0" title="0">{
+                task, err := r.Get(ctx, id)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to get task %s: %w", id, err)
+                }</span>
+                <span class="cov0" title="0">tasks = append(tasks, task)</span>
+        }
+
+        <span class="cov0" title="0">return tasks, nil</span>
+}
+
+// ListByStatus returns all tasks with the given status
+func (r *TaskRepository) ListByStatus(ctx context.Context, status models.TaskStatus) ([]*models.Task, error) <span class="cov0" title="0">{
+        // Get all project IDs
+        projectIDs, err := r.client.client.SMembers(ctx, projectsListKey)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get project list: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">var allTasks []*models.Task
+
+        // For each project, get its tasks and filter by status
+        for projectID, _ := range projectIDs </span><span class="cov0" title="0">{
+                tasks, err := r.ListByProject(ctx, projectID)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("failed to get tasks for project %s: %w", projectID, err)
+                }</span>
+
+                // Filter tasks by status
+                <span class="cov0" title="0">for _, task := range tasks </span><span class="cov0" title="0">{
+                        if task.Status == status </span><span class="cov0" title="0">{
+                                allTasks = append(allTasks, task)
+                        }</span>
+                }
+        }
+
+        <span class="cov0" title="0">return allTasks, nil</span>
+}
+
+// ReorderTask changes the order of a task within its project
+func (r *TaskRepository) ReorderTask(ctx context.Context, taskID string, newOrder int) error <span class="cov0" title="0">{
+        // Get the task
+        task, err := r.Get(ctx, taskID)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get task: %w", err)
+        }</span>
+
+        // Get all tasks for the project
+        <span class="cov0" title="0">projectTasks, err := r.ListByProject(ctx, task.ProjectID)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get project tasks: %w", err)
+        }</span>
+
+        // Validate the new order
+        <span class="cov0" title="0">if newOrder &lt; 0 || newOrder &gt;= len(projectTasks) </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid order: %d (must be between 0 and %d)", newOrder, len(projectTasks)-1)
+        }</span>
+
+        // If the order hasn't changed, do nothing
+        <span class="cov0" title="0">if task.Order == newOrder </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        // Update the task's order
+        <span class="cov0" title="0">task.Order = newOrder
+        task.UpdatedAt = time.Now()
+
+        // Store the updated task
+        taskKey := GetTaskKey(task.ID)
+        _, err = r.client.client.HSet(ctx, taskKey, task.ToMap())
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to update task order: %w", err)
+        }</span>
+
+        // Update the task's score in the sorted set
+        <span class="cov0" title="0">projectTasksKey := GetProjectTasksKey(task.ProjectID)
+        _, err = r.client.client.ZAdd(ctx, projectTasksKey, map[string]float64{task.ID: float64(newOrder)})
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to update task order in project: %w", err)
+        }</span>
+
+        // Reorder other tasks in the project
+        <span class="cov0" title="0">return r.reorderProjectTasks(ctx, task.ProjectID)</span>
+}
+
+// CreateBulk adds multiple tasks to a project in a single operation
+func (r *TaskRepository) CreateBulk(ctx context.Context, projectID string, taskInputs []TaskCreateInput) ([]*models.Task, error) <span class="cov0" title="0">{
+        // Check if the project exists
+        exists, err := r.client.client.SIsMember(ctx, projectsListKey, projectID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get result: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if !exists </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("project not found: %s", projectID)
+        }</span>
+
+        // Get the next order value for the first task
+        <span class="cov0" title="0">projectTasksKey := GetProjectTasksKey(projectID)
+        count, err := r.client.client.ZCard(ctx, projectTasksKey)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get task count: %w", err)
+        }</span>
+
+        // Create all tasks
+        <span class="cov0" title="0">createdTasks := make([]*models.Task, 0, len(taskInputs))
+        for i, input := range taskInputs </span><span class="cov0" title="0">{
+                // Generate a unique ID for the task
+                id := uuid.New().String()
+
+                // Set default values if not provided
+                priority := input.Priority
+                if priority == "" </span><span class="cov0" title="0">{
+                        priority = models.TaskPriorityMedium
+                }</span>
+
+                <span class="cov0" title="0">status := input.Status
+                if status == "" </span><span class="cov0" title="0">{
+                        status = models.TaskStatusPending
+                }</span>
+
+                <span class="cov0" title="0">description := input.Description
+                if description == "" </span><span class="cov0" title="0">{
+                        description = "no description provided"
+                }</span>
+
+                // Create a new task
+                <span class="cov0" title="0">task := models.NewTask(id, projectID, input.Title, description, priority)
+                task.Status = status
+                task.Order = int(count) + i
+
+                // Store the task in Valkey
+                taskKey := GetTaskKey(id)
+                _, err = r.client.client.HSet(ctx, taskKey, task.ToMap())
+                if err != nil </span><span class="cov0" title="0">{
+                        // Try to clean up already created tasks
+                        for _, createdTask := range createdTasks </span><span class="cov0" title="0">{
+                                r.client.client.Del(ctx, []string{GetTaskKey(createdTask.ID)})
+                                r.client.client.ZRem(ctx, projectTasksKey, []string{createdTask.ID})
+                        }</span>
+                        <span class="cov0" title="0">return nil, fmt.Errorf("failed to store task: %w", err)</span>
+                }
+
+                // Add task to the project's tasks list with its order as the score
+                <span class="cov0" title="0">_, err = r.client.client.ZAdd(ctx, projectTasksKey, map[string]float64{id: float64(task.Order)})
+                if err != nil </span><span class="cov0" title="0">{
+                        // Try to clean up the task if adding to the sorted set fails
+                        r.client.client.Del(ctx, []string{taskKey})
+                        // Also clean up already created tasks
+                        for _, createdTask := range createdTasks </span><span class="cov0" title="0">{
+                                r.client.client.Del(ctx, []string{GetTaskKey(createdTask.ID)})
+                                r.client.client.ZRem(ctx, projectTasksKey, []string{createdTask.ID})
+                        }</span>
+                        <span class="cov0" title="0">return nil, fmt.Errorf("failed to add task to project: %w", err)</span>
+                }
+
+                <span class="cov0" title="0">createdTasks = append(createdTasks, task)</span>
+        }
+
+        <span class="cov0" title="0">return createdTasks, nil</span>
+}
+
+// reorderProjectTasks updates the order of all tasks in a project to ensure they are sequential
+func (r *TaskRepository) reorderProjectTasks(ctx context.Context, projectID string) error <span class="cov0" title="0">{
+        // Get all task IDs for the project, ordered by their score (order)
+        projectTasksKey := GetProjectTasksKey(projectID)
+        opts := options.NewRangeByIndexQuery(0, -1)
+        taskIDs, err := r.client.client.ZRange(ctx, projectTasksKey, opts)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to get project tasks: %w", err)
+        }</span>
+
+        // Update each task's order to match its position in the list
+        <span class="cov0" title="0">for i, id := range taskIDs </span><span class="cov0" title="0">{
+                // Get the current score for the task
+                score, err := r.client.client.ZScore(ctx, projectTasksKey, id)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to get task score: %w", err)
+                }</span>
+
+                // If the score doesn't match the position, update it
+                <span class="cov0" title="0">if score.Value() != float64(i) </span><span class="cov0" title="0">{
+                        // Update the task's order in the sorted set
+                        _, err = r.client.client.ZAdd(ctx, projectTasksKey, map[string]float64{id: float64(i)})
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to update task order: %w", err)
+                        }</span>
+
+                        // Update the task's order in the hash
+                        <span class="cov0" title="0">taskKey := GetTaskKey(id)
+                        taskMap := map[string]string{
+                                "order":      fmt.Sprintf("%d", i),
+                                "updated_at": time.Now().Format(time.RFC3339),
+                        }
+                        _, err = r.client.client.HSet(ctx, taskKey, taskMap)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to update task order in hash: %w", err)
+                        }</span>
+                }
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package storage
+
+import (
+        "context"
+        "fmt"
+
+        glide "github.com/valkey-io/valkey-glide/go/v2"
+        "github.com/valkey-io/valkey-glide/go/v2/config"
+)
+
+// ValkeyClient wraps the Valkey-Glide client for our application
+type ValkeyClient struct {
+        client *glide.Client
+}
+
+// NewValkeyClient creates a new Valkey client with the given connection options
+func NewValkeyClient(address string, port int, username, password string) (*ValkeyClient, error) <span class="cov0" title="0">{
+        clientConfig := config.NewClientConfiguration().
+                WithAddress(&amp;config.NodeAddress{Host: address, Port: port})
+
+        if username != "" &amp;&amp; password != "" </span><span class="cov0" title="0">{
+                clientConfig.WithCredentials(config.NewServerCredentials(username, password))
+        }</span>
+
+        <span class="cov0" title="0">client, err := glide.NewClient(clientConfig)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create Valkey client: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return &amp;ValkeyClient{
+                client: client,
+        }, nil</span>
+}
+
+// Ping checks the connection to the Valkey server
+func (vc *ValkeyClient) Ping(ctx context.Context) error <span class="cov0" title="0">{
+        _, err := vc.client.Ping(ctx)
+        return err
+}</span>
+
+// Close closes the Valkey client connection
+func (vc *ValkeyClient) Close() error <span class="cov0" title="0">{
+        vc.client.Close()
+        return nil
+}</span>
+
+// Keys used for storing data in Valkey
+const (
+        // Project keys
+        projectKeyPrefix = "project:"
+        projectsListKey  = "projects"
+
+        // Task keys
+        taskKeyPrefix      = "task:"
+        projectTasksPrefix = "project_tasks:"
+)
+
+// GetProjectKey returns the key for a specific project
+func GetProjectKey(projectID string) string <span class="cov0" title="0">{
+        return projectKeyPrefix + projectID
+}</span>
+
+// GetTaskKey returns the key for a specific task
+func GetTaskKey(taskID string) string <span class="cov0" title="0">{
+        return taskKeyPrefix + taskID
+}</span>
+
+// GetProjectTasksKey returns the key for a project's tasks list
+func GetProjectTasksKey(projectID string) string <span class="cov0" title="0">{
+        return projectTasksPrefix + projectID
+}</span>
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">// Package utils provides testing utilities for the valkey-ai-tasks project
+package utils
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "testing"
+        "time"
+
+        "github.com/google/uuid"
+        "github.com/jbrinkman/valkey-ai-tasks/go/internal/models"
+        "github.com/stretchr/testify/require"
+        valkeyglide "github.com/valkey-io/valkey-glide/go/v2"
+)
+
+// TestProject creates a test project with random ID
+func TestProject(name string, description string) *models.Project <span class="cov8" title="1">{
+        if name == "" </span><span class="cov0" title="0">{
+                name = fmt.Sprintf("Test Project %s", uuid.New().String()[:8])
+        }</span>
+
+        <span class="cov8" title="1">if description == "" </span><span class="cov8" title="1">{
+                description = fmt.Sprintf("Test project description %s", uuid.New().String()[:8])
+        }</span>
+
+        <span class="cov8" title="1">return &amp;models.Project{
+                ID:            uuid.New().String(),
+                ApplicationID: uuid.New().String(), // Add application ID for completeness
+                Name:          name,
+                Description:   description,
+                CreatedAt:     time.Now(),
+                UpdatedAt:     time.Now(),
+        }</span>
+}
+
+// TestTask creates a test task with random ID
+func TestTask(projectID string, title string, description string) *models.Task <span class="cov8" title="1">{
+        if projectID == "" </span><span class="cov0" title="0">{
+                projectID = uuid.New().String()
+        }</span>
+
+        <span class="cov8" title="1">if title == "" </span><span class="cov0" title="0">{
+                title = fmt.Sprintf("Test Task %s", uuid.New().String()[:8])
+        }</span>
+
+        <span class="cov8" title="1">if description == "" </span><span class="cov8" title="1">{
+                description = fmt.Sprintf("Test task description %s", uuid.New().String()[:8])
+        }</span>
+
+        <span class="cov8" title="1">return &amp;models.Task{
+                ID:          uuid.New().String(),
+                ProjectID:   projectID,
+                Title:       title,
+                Description: description,
+                Status:      models.TaskStatusPending,
+                Priority:    models.TaskPriorityMedium,
+                Order:       0,
+                CreatedAt:   time.Now(),
+                UpdatedAt:   time.Now(),
+        }</span>
+}
+
+// CleanupValkeyData removes all test data from Valkey
+func CleanupValkeyData(ctx context.Context, t *testing.T, client *valkeyglide.Client) <span class="cov8" title="1">{
+        t.Helper()
+        req := require.New(t)
+
+        // Flush all data (use with caution, only in test environments)
+        _, err := client.FlushAll(ctx)
+        req.NoError(err, "Failed to flush Valkey data")
+}</span>
+
+// PopulateTestData creates test projects and tasks in Valkey
+// This is useful for integration tests that need pre-populated data
+func PopulateTestData(ctx context.Context, t *testing.T, client *valkeyglide.Client, projectCount int, tasksPerProject int) ([]string, []string) <span class="cov8" title="1">{
+        t.Helper()
+        req := require.New(t)
+
+        projectIDs := make([]string, 0, projectCount)
+        taskIDs := make([]string, 0, projectCount*tasksPerProject)
+
+        // Create test projects
+        for i := 0; i &lt; projectCount; i++ </span><span class="cov8" title="1">{
+                projectID := uuid.New().String()
+                projectIDs = append(projectIDs, projectID)
+
+                project := TestProject(fmt.Sprintf("Test Project %d", i), "")
+                project.ID = projectID
+
+                // Store project in Valkey (simplified, actual implementation would use repository)
+                projectKey := fmt.Sprintf("project:%s", projectID)
+                projectMap := project.ToMap()
+
+                // Store project fields as hash
+                result, err := client.HSet(ctx, projectKey, projectMap)
+                req.NoError(err, "Failed to store project in Valkey")
+                req.Greater(result, int64(0), "Expected to set at least one field")
+
+                // Add to projects list
+                result, err = client.SAdd(ctx, "projects", []string{projectID})
+                req.NoError(err, "Failed to add project to projects list")
+
+                // Create tasks for this project
+                for j := 0; j &lt; tasksPerProject; j++ </span><span class="cov8" title="1">{
+                        taskID := uuid.New().String()
+                        taskIDs = append(taskIDs, taskID)
+
+                        task := TestTask(projectID, fmt.Sprintf("Test Task %d-%d", i, j), "")
+                        task.ID = taskID
+                        task.Order = j
+
+                        // Store task in Valkey
+                        taskKey := fmt.Sprintf("task:%s", taskID)
+                        taskMap := task.ToMap()
+
+                        // Store task fields as hash
+                        result, err = client.HSet(ctx, taskKey, taskMap)
+                        req.NoError(err, "Failed to store task in Valkey")
+                        req.Greater(result, int64(0), "Expected to set at least one field")
+
+                        // Add to project tasks list
+                        result, err = client.SAdd(ctx, fmt.Sprintf("project:%s:tasks", projectID), []string{taskID})
+                        req.NoError(err, "Failed to add task to project tasks list")
+
+                        // Add to tasks list
+                        result, err = client.SAdd(ctx, "tasks", []string{taskID})
+                        req.NoError(err, "Failed to add task to tasks list")
+
+                        // Add to task order sorted set
+                        membersScoreMap := map[string]float64{
+                                taskID: float64(j),
+                        }
+                        result, err = client.ZAdd(ctx, fmt.Sprintf("project:%s:tasks:order", projectID), membersScoreMap)
+                        req.NoError(err, "Failed to add task to order sorted set")
+                }</span>
+        }
+
+        <span class="cov8" title="1">return projectIDs, taskIDs</span>
+}
+
+// ToJSON converts a struct to JSON
+func ToJSON(v interface{}) (string, error) <span class="cov0" title="0">{
+        data, err := json.Marshal(v)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov0" title="0">return string(data), nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">// Package utils provides testing utilities for the valkey-ai-tasks project
+package utils
+
+import (
+        "context"
+        "strconv"
+        "strings"
+        "testing"
+        "time"
+
+        "github.com/stretchr/testify/require"
+)
+
+// TestContext returns a context with timeout for use in tests
+func TestContext(t *testing.T) (context.Context, context.CancelFunc) <span class="cov8" title="1">{
+        t.Helper()
+        return context.WithTimeout(context.Background(), 5*time.Second)
+}</span>
+
+// RequireTestify returns a testify require instance for cleaner assertions
+// This is just a convenience function to make test code more readable
+func RequireTestify(t *testing.T) *require.Assertions <span class="cov8" title="1">{
+        t.Helper()
+        return require.New(t)
+}</span>
+
+// SetupTest is a helper function to set up common test requirements
+// It returns a context with timeout and a testify require instance
+func SetupTest(t *testing.T) (context.Context, *require.Assertions, context.CancelFunc) <span class="cov8" title="1">{
+        t.Helper()
+        ctx, cancel := TestContext(t)
+        req := RequireTestify(t)
+        return ctx, req, cancel
+}</span>
+
+// CleanupTest is a helper function to clean up after tests
+func CleanupTest(t *testing.T, cancel context.CancelFunc) <span class="cov8" title="1">{
+        t.Helper()
+        cancel()
+}</span>
+
+// ParseHostPort splits a host:port string into separate host and port components
+// Returns a slice with [host, port] or empty strings if parsing fails
+func ParseHostPort(hostPort string) []string <span class="cov0" title="0">{
+        parts := strings.Split(hostPort, ":")
+        if len(parts) != 2 </span><span class="cov0" title="0">{
+                return []string{"localhost", "6379"} // Default values
+        }</span>
+        <span class="cov0" title="0">return parts</span>
+}
+
+// ParseInt converts a string to an integer with a default value if parsing fails
+func ParseInt(s string) int <span class="cov0" title="0">{
+        val, err := strconv.Atoi(s)
+        if err != nil </span><span class="cov0" title="0">{
+                return 6379 // Default port
+        }</span>
+        <span class="cov0" title="0">return val</span>
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">// Package utils provides testing utilities for the valkey-ai-tasks project
+package utils
+
+import (
+        "context"
+        "fmt"
+        "strconv"
+        "strings"
+        "testing"
+        "time"
+
+        "github.com/stretchr/testify/require"
+        "github.com/testcontainers/testcontainers-go"
+        "github.com/testcontainers/testcontainers-go/modules/valkey"
+        "github.com/testcontainers/testcontainers-go/wait"
+        valkeyglide "github.com/valkey-io/valkey-glide/go/v2"
+        "github.com/valkey-io/valkey-glide/go/v2/config"
+)
+
+const (
+        // ValkeyDefaultPort is the default port for Valkey
+        ValkeyDefaultPort = "6379/tcp"
+        // ValkeyImage is the Docker image for Valkey
+        ValkeyImage = "valkey/valkey:latest"
+        // ValkeyStartupTimeout is the timeout for Valkey container startup
+        ValkeyStartupTimeout = 30 * time.Second
+)
+
+// ValkeyContainer represents a Valkey container for testing
+type ValkeyContainer struct {
+        Container *valkey.ValkeyContainer
+        URI       string
+        Client    *valkeyglide.Client
+}
+
+// StartValkeyContainer starts a Valkey container for testing
+func StartValkeyContainer(ctx context.Context, t *testing.T) (*ValkeyContainer, error) <span class="cov8" title="1">{
+        t.Helper()
+
+        req := require.New(t)
+
+        // Create Valkey container request
+        valkeyContainer, err := valkey.RunContainer(ctx,
+                testcontainers.WithImage(ValkeyImage),
+                valkey.WithLogLevel("notice"),
+                testcontainers.WithWaitStrategy(
+                        wait.ForLog("Ready to accept connections").
+                                WithStartupTimeout(ValkeyStartupTimeout),
+                ),
+        )
+        req.NoError(err, "Failed to start Valkey container")
+
+        // Get container endpoint
+        endpoint, err := valkeyContainer.Endpoint(ctx, "")
+        req.NoError(err, "Failed to get Valkey container endpoint")
+
+        // Parse the endpoint to get host and port
+        parts := strings.Split(endpoint, ":")
+        req.Equal(2, len(parts), "Expected endpoint format host:port")
+        host := parts[0]
+        port, err := strconv.Atoi(parts[1])
+        req.NoError(err, "Failed to parse Valkey container port")
+
+        // Create Valkey client configuration
+        address := &amp;config.NodeAddress{Host: host, Port: port}
+        clientConfig := config.NewClientConfiguration().WithAddress(address)
+
+        // Create Valkey client
+        client, err := valkeyglide.NewClient(clientConfig)
+        req.NoError(err, "Failed to create Valkey client")
+
+        // Test connection
+        pong, err := client.Ping(ctx)
+        req.NoError(err, "Failed to ping Valkey container")
+        req.Equal("PONG", pong, "Expected PONG response from Valkey")
+
+        return &amp;ValkeyContainer{
+                Container: valkeyContainer,
+                URI:       fmt.Sprintf("redis://%s", endpoint),
+                Client:    client,
+        }, nil
+}</span>
+
+// StopValkeyContainer stops a Valkey container
+func StopValkeyContainer(ctx context.Context, t *testing.T, container *ValkeyContainer) <span class="cov8" title="1">{
+        t.Helper()
+
+        if container == nil || container.Container == nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+
+        <span class="cov8" title="1">req := require.New(t)
+
+        // Close client connection
+        if container.Client != nil </span><span class="cov8" title="1">{
+                // Close the client connection
+                container.Client.Close()
+        }</span>
+
+        // Terminate container
+        <span class="cov8" title="1">err := container.Container.Terminate(ctx)
+        req.NoError(err, "Failed to terminate Valkey container")</span>
+}
+
+// SetupValkeyTest sets up a Valkey container for testing
+// It returns a context, Valkey container, and cleanup function
+func SetupValkeyTest(t *testing.T) (context.Context, *ValkeyContainer, func()) <span class="cov8" title="1">{
+        t.Helper()
+
+        // Create context with timeout
+        ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+
+        // Start Valkey container
+        container, err := StartValkeyContainer(ctx, t)
+        require.NoError(t, err, "Failed to start Valkey container")
+
+        // Return cleanup function
+        cleanup := func() </span><span class="cov8" title="1">{
+                StopValkeyContainer(ctx, t, container)
+                cancel()
+        }</span>
+
+        <span class="cov8" title="1">return ctx, container, cleanup</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
