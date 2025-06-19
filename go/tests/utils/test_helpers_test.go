@@ -20,7 +20,7 @@ func TestTestContext(t *testing.T) {
 
 func TestRequireTestify(t *testing.T) {
 	req := utils.RequireTestify(t)
-	
+
 	// Simple test to verify the require instance works
 	req.True(true, "This should pass")
 }
@@ -32,7 +32,7 @@ func TestSetupTest(t *testing.T) {
 	// Verify that the context has a deadline
 	_, hasDeadline := ctx.Deadline()
 	assert.True(t, hasDeadline)
-	
+
 	// Verify that the require instance works
 	req.NotNil(ctx, "Context should not be nil")
 }

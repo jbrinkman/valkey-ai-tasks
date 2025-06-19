@@ -542,7 +542,7 @@ func (s *MCPGoServer) registerBulkCreateTasksTool() {
 			if !ok {
 				return mcp.NewToolResultError("Task title is required"), nil
 			}
-			
+
 			title, ok := titleRaw.(string)
 			if !ok || title == "" {
 				return mcp.NewToolResultError("Task title must be a non-empty string"), nil

@@ -3,6 +3,8 @@ package utils
 
 import (
 	"context"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -35,4 +37,23 @@ func SetupTest(t *testing.T) (context.Context, *require.Assertions, context.Canc
 func CleanupTest(t *testing.T, cancel context.CancelFunc) {
 	t.Helper()
 	cancel()
+}
+
+// ParseHostPort splits a host:port string into separate host and port components
+// Returns a slice with [host, port] or empty strings if parsing fails
+func ParseHostPort(hostPort string) []string {
+	parts := strings.Split(hostPort, ":")
+	if len(parts) != 2 {
+		return []string{"localhost", "6379"} // Default values
+	}
+	return parts
+}
+
+// ParseInt converts a string to an integer with a default value if parsing fails
+func ParseInt(s string) int {
+	val, err := strconv.Atoi(s)
+	if err != nil {
+		return 6379 // Default port
+	}
+	return val
 }
