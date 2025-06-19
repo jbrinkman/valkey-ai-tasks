@@ -114,30 +114,30 @@ func (s *MCPServer) handleListFunctions(w http.ResponseWriter, r *http.Request) 
 	functions := MCPFunctionList{
 		Functions: []MCPFunction{
 			{
-				Name:        "create_project",
-				Description: "Create a new project",
+				Name:        "create_plan",
+				Description: "Create a new plan for planning and organizing a feature or initiative",
 				Parameters: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
 						"application_id": map[string]interface{}{
 							"type":        "string",
-							"description": "Application identifier to associate with this project",
+							"description": "Application identifier to associate with this plan",
 						},
 						"name": map[string]interface{}{
 							"type":        "string",
-							"description": "Project name",
+							"description": "Plan name",
 						},
 						"description": map[string]interface{}{
 							"type":        "string",
-							"description": "Project description",
+							"description": "Plan description",
 						},
 					},
 					"required": []string{"application_id", "name"},
 				},
 			},
 			{
-				Name:        "get_project",
-				Description: "Get a project by ID",
+				Name:        "get_plan",
+				Description: "Get a plan by ID",
 				Parameters: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
@@ -150,30 +150,30 @@ func (s *MCPServer) handleListFunctions(w http.ResponseWriter, r *http.Request) 
 				},
 			},
 			{
-				Name:        "list_projects",
-				Description: "List all projects",
+				Name:        "list_plans",
+				Description: "List all plans",
 				Parameters: map[string]interface{}{
 					"type":       "object",
 					"properties": map[string]interface{}{},
 				},
 			},
 			{
-				Name:        "list_projects_by_application",
-				Description: "List all projects for a specific application",
+				Name:        "list_plans_by_application",
+				Description: "List all plans for a specific application",
 				Parameters: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
 						"application_id": map[string]interface{}{
 							"type":        "string",
-							"description": "Application identifier to filter projects by",
+							"description": "Application identifier to filter plans by",
 						},
 					},
 					"required": []string{"application_id"},
 				},
 			},
 			{
-				Name:        "update_project",
-				Description: "Update an existing project",
+				Name:        "update_plan",
+				Description: "Update an existing plan",
 				Parameters: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
@@ -194,8 +194,8 @@ func (s *MCPServer) handleListFunctions(w http.ResponseWriter, r *http.Request) 
 				},
 			},
 			{
-				Name:        "delete_project",
-				Description: "Delete a project by ID",
+				Name:        "delete_plan",
+				Description: "Delete a plan by ID",
 				Parameters: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
@@ -209,13 +209,13 @@ func (s *MCPServer) handleListFunctions(w http.ResponseWriter, r *http.Request) 
 			},
 			{
 				Name:        "create_task",
-				Description: "Create a new task in a project",
+				Description: "Create a new task as part of a feature implementation plan",
 				Parameters: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
-						"project_id": map[string]interface{}{
+						"plan_id": map[string]interface{}{
 							"type":        "string",
-							"description": "Project ID",
+							"description": "Plan ID this task belongs to",
 						},
 						"title": map[string]interface{}{
 							"type":        "string",
@@ -231,7 +231,7 @@ func (s *MCPServer) handleListFunctions(w http.ResponseWriter, r *http.Request) 
 							"enum":        []string{"low", "medium", "high"},
 						},
 					},
-					"required": []string{"project_id", "title"},
+					"required": []string{"plan_id", "title"},
 				},
 			},
 			{
@@ -249,17 +249,17 @@ func (s *MCPServer) handleListFunctions(w http.ResponseWriter, r *http.Request) 
 				},
 			},
 			{
-				Name:        "list_tasks_by_project",
-				Description: "List all tasks in a project",
+				Name:        "list_tasks_by_plan",
+				Description: "List all tasks in a feature implementation plan",
 				Parameters: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
-						"project_id": map[string]interface{}{
+						"plan_id": map[string]interface{}{
 							"type":        "string",
-							"description": "Project ID",
+							"description": "Plan ID to filter tasks by",
 						},
 					},
-					"required": []string{"project_id"},
+					"required": []string{"plan_id"},
 				},
 			},
 			{
@@ -305,9 +305,9 @@ func (s *MCPServer) handleListFunctions(w http.ResponseWriter, r *http.Request) 
 							"description": "Task priority (low, medium, high)",
 							"enum":        []string{"low", "medium", "high"},
 						},
-						"project_id": map[string]interface{}{
+						"plan_id": map[string]interface{}{
 							"type":        "string",
-							"description": "Project ID (if moving to another project)",
+							"description": "Plan ID (if moving to another plan)",
 						},
 					},
 					"required": []string{"id"},
@@ -329,7 +329,7 @@ func (s *MCPServer) handleListFunctions(w http.ResponseWriter, r *http.Request) 
 			},
 			{
 				Name:        "reorder_task",
-				Description: "Change the order of a task within its project",
+				Description: "Change the order of a task within its plan",
 				Parameters: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
@@ -339,7 +339,7 @@ func (s *MCPServer) handleListFunctions(w http.ResponseWriter, r *http.Request) 
 						},
 						"new_order": map[string]interface{}{
 							"type":        "integer",
-							"description": "New position in the project's task list (0-based)",
+							"description": "New position in the plan's task list (0-based)",
 						},
 					},
 					"required": []string{"id", "new_order"},
@@ -375,24 +375,24 @@ func (s *MCPServer) handleInvoke(w http.ResponseWriter, r *http.Request, pathPar
 	var err error
 
 	switch functionName {
-	case "create_project":
-		result, err = s.createProject(ctx, params)
-	case "get_project":
-		result, err = s.getProject(ctx, params)
-	case "list_projects":
-		result, err = s.listProjects(ctx)
-	case "list_projects_by_application":
-		result, err = s.listProjectsByApplication(ctx, params)
-	case "update_project":
-		result, err = s.updateProject(ctx, params)
-	case "delete_project":
-		result, err = s.deleteProject(ctx, params)
+	case "create_plan":
+		result, err = s.createPlan(ctx, params)
+	case "get_plan":
+		result, err = s.getPlan(ctx, params)
+	case "list_plans":
+		result, err = s.listPlans(ctx)
+	case "list_plans_by_application":
+		result, err = s.listPlansByApplication(ctx, params)
+	case "update_plan":
+		result, err = s.updatePlan(ctx, params)
+	case "delete_plan":
+		result, err = s.deletePlan(ctx, params)
 	case "create_task":
 		result, err = s.createTask(ctx, params)
 	case "get_task":
 		result, err = s.getTask(ctx, params)
-	case "list_tasks_by_project":
-		result, err = s.listTasksByProject(ctx, params)
+	case "list_tasks_by_plan":
+		result, err = s.listTasksByPlan(ctx, params)
 	case "list_tasks_by_status":
 		result, err = s.listTasksByStatus(ctx, params)
 	case "update_task":
@@ -424,8 +424,8 @@ func handleError(w http.ResponseWriter, err error, statusCode int) {
 	})
 }
 
-// Function implementations for project operations
-func (s *MCPServer) createProject(ctx context.Context, params map[string]interface{}) (interface{}, error) {
+// Function implementations for plan operations
+func (s *MCPServer) createPlan(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	applicationID, ok := params["application_id"].(string)
 	if !ok {
 		return nil, fmt.Errorf("application_id is required and must be a string")
@@ -446,7 +446,7 @@ func (s *MCPServer) createProject(ctx context.Context, params map[string]interfa
 	return plan, nil
 }
 
-func (s *MCPServer) getProject(ctx context.Context, params map[string]interface{}) (interface{}, error) {
+func (s *MCPServer) getPlan(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	id, ok := params["id"].(string)
 	if !ok {
 		return nil, fmt.Errorf("id is required and must be a string")
@@ -460,30 +460,29 @@ func (s *MCPServer) getProject(ctx context.Context, params map[string]interface{
 	return plan, nil
 }
 
-func (s *MCPServer) listProjects(ctx context.Context) (interface{}, error) {
-	projects, err := s.planRepo.List(ctx)
+func (s *MCPServer) listPlans(ctx context.Context) (interface{}, error) {
+	plans, err := s.planRepo.List(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to list plans: %w", err)
 	}
-
-	return projects, nil
+	return plans, nil
 }
 
-func (s *MCPServer) listProjectsByApplication(ctx context.Context, params map[string]interface{}) (interface{}, error) {
+func (s *MCPServer) listPlansByApplication(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	applicationID, ok := params["application_id"].(string)
 	if !ok {
 		return nil, fmt.Errorf("application_id is required and must be a string")
 	}
 
-	projects, err := s.planRepo.ListByApplication(ctx, applicationID)
+	plans, err := s.planRepo.ListByApplication(ctx, applicationID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to list plans by application: %w", err)
 	}
 
-	return projects, nil
+	return plans, nil
 }
 
-func (s *MCPServer) updateProject(ctx context.Context, params map[string]interface{}) (interface{}, error) {
+func (s *MCPServer) updatePlan(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	id, ok := params["id"].(string)
 	if !ok {
 		return nil, fmt.Errorf("id is required and must be a string")
@@ -513,7 +512,7 @@ func (s *MCPServer) updateProject(ctx context.Context, params map[string]interfa
 	return plan, nil
 }
 
-func (s *MCPServer) deleteProject(ctx context.Context, params map[string]interface{}) (interface{}, error) {
+func (s *MCPServer) deletePlan(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	id, ok := params["id"].(string)
 	if !ok {
 		return nil, fmt.Errorf("id is required and must be a string")
@@ -529,9 +528,9 @@ func (s *MCPServer) deleteProject(ctx context.Context, params map[string]interfa
 
 // Function implementations for task operations
 func (s *MCPServer) createTask(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-	projectID, ok := params["project_id"].(string)
+	planID, ok := params["plan_id"].(string)
 	if !ok {
-		return nil, fmt.Errorf("project_id is required and must be a string")
+		return nil, fmt.Errorf("plan_id is required and must be a string")
 	}
 
 	title, ok := params["title"].(string)
@@ -553,7 +552,7 @@ func (s *MCPServer) createTask(ctx context.Context, params map[string]interface{
 		return nil, fmt.Errorf("invalid priority: %s", priorityStr)
 	}
 
-	task, err := s.taskRepo.Create(ctx, projectID, title, description, priority)
+	task, err := s.taskRepo.Create(ctx, planID, title, description, priority)
 	if err != nil {
 		return nil, err
 	}
@@ -575,7 +574,7 @@ func (s *MCPServer) getTask(ctx context.Context, params map[string]interface{}) 
 	return task, nil
 }
 
-func (s *MCPServer) listTasksByProject(ctx context.Context, params map[string]interface{}) (interface{}, error) {
+func (s *MCPServer) listTasksByPlan(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	planID, ok := params["plan_id"].(string)
 	if !ok {
 		return nil, fmt.Errorf("plan_id is required and must be a string")
@@ -766,24 +765,24 @@ func (s *MCPServer) handleSSE(w http.ResponseWriter, r *http.Request) {
 		var err error
 
 		switch functionName {
-		case "create_project":
-			result, err = s.createProject(r.Context(), params)
-		case "get_project":
-			result, err = s.getProject(r.Context(), params)
-		case "list_projects":
-			result, err = s.listProjects(r.Context())
-		case "list_projects_by_application":
-			result, err = s.listProjectsByApplication(r.Context(), params)
-		case "update_project":
-			result, err = s.updateProject(r.Context(), params)
-		case "delete_project":
-			result, err = s.deleteProject(r.Context(), params)
+		case "create_plan":
+			result, err = s.createPlan(r.Context(), params)
+		case "get_plan":
+			result, err = s.getPlan(r.Context(), params)
+		case "list_plans":
+			result, err = s.listPlans(r.Context())
+		case "list_plans_by_application":
+			result, err = s.listPlansByApplication(r.Context(), params)
+		case "update_plan":
+			result, err = s.updatePlan(r.Context(), params)
+		case "delete_plan":
+			result, err = s.deletePlan(r.Context(), params)
 		case "create_task":
 			result, err = s.createTask(r.Context(), params)
 		case "get_task":
 			result, err = s.getTask(r.Context(), params)
-		case "list_tasks_by_project":
-			result, err = s.listTasksByProject(r.Context(), params)
+		case "list_tasks_by_plan":
+			result, err = s.listTasksByPlan(r.Context(), params)
 		case "list_tasks_by_status":
 			result, err = s.listTasksByStatus(r.Context(), params)
 		case "update_task":

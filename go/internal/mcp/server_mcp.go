@@ -297,7 +297,7 @@ func (s *MCPGoServer) registerCreateTaskTool() {
 	)
 
 	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		projectID, err := request.RequireString("project_id")
+		planID, err := request.RequireString("plan_id")
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -312,7 +312,7 @@ func (s *MCPGoServer) registerCreateTaskTool() {
 		priorityStr := request.GetString("priority", string(models.TaskPriorityMedium))
 		priority := models.TaskPriority(priorityStr)
 
-		task, err := s.taskRepo.Create(ctx, projectID, title, description, priority)
+		task, err := s.taskRepo.Create(ctx, planID, title, description, priority)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to create task: %v", err)), nil
 		}
