@@ -51,12 +51,12 @@ func TestTaskRepositoryCreateBulk(t *testing.T) {
 	defer valkeyClient.Close()
 
 	// Create repositories
-	projectRepo := storage.NewProjectRepository(valkeyClient)
+	planRepo := storage.NewPlanRepository(valkeyClient)
 	taskRepo := storage.NewTaskRepository(valkeyClient)
 
-	// Create a test project
-	project, err := projectRepo.Create(ctx, "test-app", "Test Project", "Test project description")
-	req.NoError(err, "Failed to create test project")
+	// Create a test plan
+	plan, err := planRepo.Create(ctx, "test-app", "Test Plan", "Test plan description")
+	req.NoError(err, "Failed to create test plan")
 
 	// Prepare task inputs for bulk creation
 	taskInputs := []storage.TaskCreateInput{
@@ -76,7 +76,7 @@ func TestTaskRepositoryCreateBulk(t *testing.T) {
 	}
 
 	// Create tasks in bulk
-	createdTasks, err := taskRepo.CreateBulk(ctx, project.ID, taskInputs)
+	createdTasks, err := taskRepo.CreateBulk(ctx, plan.ID, taskInputs)
 	req.NoError(err, "Failed to create tasks in bulk")
 	req.NotNil(createdTasks, "Created tasks should not be nil")
 	req.Equal(3, len(createdTasks), "Should have created 3 tasks")
@@ -106,7 +106,7 @@ func TestTaskRepositoryCreateBulk(t *testing.T) {
 	assert.Equal(2, createdTasks[2].Order)
 
 	// Verify tasks are stored in Valkey
-	tasks, err := taskRepo.ListByProject(ctx, project.ID)
-	req.NoError(err, "Failed to list tasks by project")
-	assert.Equal(3, len(tasks), "Should have 3 tasks in the project")
+	tasks, err := taskRepo.ListByPlan(ctx, plan.ID)
+	req.NoError(err, "Failed to list tasks by plan")
+	assert.Equal(3, len(tasks), "Should have 3 tasks in the plan")
 }

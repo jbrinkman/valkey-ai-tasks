@@ -14,58 +14,54 @@ import (
 
 // MockTaskRepository is an in-memory implementation of TaskRepositoryInterface for testing
 type MockTaskRepository struct {
-	mu           sync.RWMutex
-	tasks        map[string]*models.Task
-	projectTasks map[string][]string // projectID -> []taskID
-	projectRepo  *MockProjectRepository
+	mu        sync.RWMutex
+	tasks     map[string]*models.Task
+	planTasks map[string][]string // planID -> []taskID
+	planRepo  *MockPlanRepository
 }
 
 // NewMockTaskRepository creates a new mock task repository
-func NewMockTaskRepository(projectRepo *MockProjectRepository) *MockTaskRepository {
+func NewMockTaskRepository(planRepo *MockPlanRepository) *MockTaskRepository {
 	return &MockTaskRepository{
-		tasks:        make(map[string]*models.Task),
-		projectTasks: make(map[string][]string),
-		projectRepo:  projectRepo,
+		tasks:     make(map[string]*models.Task),
+		planTasks: make(map[string][]string),
+		planRepo:  planRepo,
 	}
 }
 
-// Create adds a new task to a project in the mock storage
-func (r *MockTaskRepository) Create(ctx context.Context, projectID, title, description string, priority models.TaskPriority) (*models.Task, error) {
+// Create adds a new task to a plan in the mock storage
+func (r *MockTaskRepository) Create(ctx context.Context, planID string, title, description string, priority models.TaskPriority) (*models.Task, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	// Check if project exists
-	if r.projectRepo != nil {
-		_, err := r.projectRepo.Get(ctx, projectID)
+	// Check if the plan exists
+	if r.planRepo != nil {
+		_, err := r.planRepo.Get(ctx, planID)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	id := uuid.New().String()
-	task := models.NewTask(id, projectID, title, description, priority)
+	task := models.NewTask(id, planID, title, description, priority)
 
-	// Set the order to be the last in the project
-	taskIDs, exists := r.projectTasks[projectID]
-	if exists {
-		task.Order = len(taskIDs)
-	} else {
-		task.Order = 0
+	// Set the order to be the last
+	if _, exists := r.planTasks[planID]; !exists {
+		r.planTasks[planID] = []string{}
 	}
-
+	r.planTasks[planID] = append(r.planTasks[planID], id)
 	r.tasks[id] = task
-	r.projectTasks[projectID] = append(r.projectTasks[projectID], id)
 	return task, nil
 }
 
-// CreateBulk adds multiple tasks to a project in the mock storage
-func (r *MockTaskRepository) CreateBulk(ctx context.Context, projectID string, taskInputs []storage.TaskCreateInput) ([]*models.Task, error) {
+// CreateBulk adds multiple tasks to a plan in the mock storage
+func (r *MockTaskRepository) CreateBulk(ctx context.Context, planID string, taskInputs []storage.TaskCreateInput) ([]*models.Task, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	// Check if project exists
-	if r.projectRepo != nil {
-		_, err := r.projectRepo.Get(ctx, projectID)
+	// Check if plan exists
+	if r.planRepo != nil {
+		_, err := r.planRepo.Get(ctx, planID)
 		if err != nil {
 			return nil, err
 		}
@@ -73,9 +69,11 @@ func (r *MockTaskRepository) CreateBulk(ctx context.Context, projectID string, t
 
 	// Get the current order offset
 	orderOffset := 0
-	taskIDs, exists := r.projectTasks[projectID]
+	taskIDs, exists := r.planTasks[planID]
 	if exists {
 		orderOffset = len(taskIDs)
+	} else {
+		r.planTasks[planID] = []string{}
 	}
 
 	// Create all tasks
@@ -101,7 +99,7 @@ func (r *MockTaskRepository) CreateBulk(ctx context.Context, projectID string, t
 
 		task := &models.Task{
 			ID:          id,
-			ProjectID:   projectID,
+			PlanID:      planID,
 			Title:       input.Title,
 			Description: description,
 			Status:      status,
@@ -112,7 +110,7 @@ func (r *MockTaskRepository) CreateBulk(ctx context.Context, projectID string, t
 		}
 
 		r.tasks[id] = task
-		r.projectTasks[projectID] = append(r.projectTasks[projectID], id)
+		r.planTasks[planID] = append(r.planTasks[planID], id)
 		createdTasks = append(createdTasks, task)
 	}
 
@@ -162,18 +160,21 @@ func (r *MockTaskRepository) Delete(ctx context.Context, id string) error {
 	// Remove from tasks map
 	delete(r.tasks, id)
 
-	// Remove from projectTasks map
-	projectID := task.ProjectID
-	taskIDs := r.projectTasks[projectID]
-	for i, taskID := range taskIDs {
-		if taskID == id {
-			r.projectTasks[projectID] = append(taskIDs[:i], taskIDs[i+1:]...)
-			break
+	// Remove from plan's task list
+	planID := task.PlanID
+	taskIDs, exists := r.planTasks[planID]
+	if exists {
+		newTaskIDs := []string{}
+		for _, taskID := range taskIDs {
+			if taskID != id {
+				newTaskIDs = append(newTaskIDs, taskID)
+			}
 		}
+		r.planTasks[planID] = newTaskIDs
 	}
 
-	// Update order for remaining tasks in the project
-	for _, taskID := range r.projectTasks[projectID] {
+	// Update order for remaining tasks in the plan
+	for _, taskID := range r.planTasks[planID] {
 		t := r.tasks[taskID]
 		if t.Order > task.Order {
 			t.Order--
@@ -184,13 +185,13 @@ func (r *MockTaskRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// ListByProject returns all tasks for a specific project from the mock storage
-func (r *MockTaskRepository) ListByProject(ctx context.Context, projectID string) ([]*models.Task, error) {
+// ListByPlan returns all tasks for a specific plan from the mock storage
+func (r *MockTaskRepository) ListByPlan(ctx context.Context, planID string) ([]*models.Task, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	taskIDs, exists := r.projectTasks[projectID]
-	if !exists {
+	taskIDs, ok := r.planTasks[planID]
+	if !ok {
 		return []*models.Task{}, nil
 	}
 
@@ -201,7 +202,7 @@ func (r *MockTaskRepository) ListByProject(ctx context.Context, projectID string
 		}
 	}
 
-	// Sort by order
+	// Sort tasks by order
 	sort.Slice(tasks, func(i, j int) bool {
 		return tasks[i].Order < tasks[j].Order
 	})
@@ -223,8 +224,8 @@ func (r *MockTaskRepository) ListByStatus(ctx context.Context, status models.Tas
 	return tasks, nil
 }
 
-// Reorder changes the order of a task within its project
-func (r *MockTaskRepository) Reorder(ctx context.Context, id string, newOrder int) error {
+// ReorderTask changes the order of a task within its plan
+func (r *MockTaskRepository) ReorderTask(ctx context.Context, id string, newOrder int) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -233,10 +234,10 @@ func (r *MockTaskRepository) Reorder(ctx context.Context, id string, newOrder in
 		return fmt.Errorf("task not found: %s", id)
 	}
 
-	projectID := task.ProjectID
-	taskIDs, exists := r.projectTasks[projectID]
+	planID := task.PlanID
+	taskIDs, exists := r.planTasks[planID]
 	if !exists {
-		return fmt.Errorf("project tasks not found: %s", projectID)
+		return fmt.Errorf("project tasks not found: %s", planID)
 	}
 
 	if newOrder < 0 || newOrder >= len(taskIDs) {

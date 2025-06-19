@@ -30,27 +30,27 @@ func NewTaskRepository(client *ValkeyClient) *TaskRepository {
 	}
 }
 
-// Create adds a new task to a project
-func (r *TaskRepository) Create(ctx context.Context, projectID, title, description string, priority models.TaskPriority) (*models.Task, error) {
-	// Check if the project exists
-	exists, err := r.client.client.SIsMember(ctx, projectsListKey, projectID)
+// Create adds a new task to a plan
+func (r *TaskRepository) Create(ctx context.Context, planID, title, description string, priority models.TaskPriority) (*models.Task, error) {
+	// Check if the plan exists
+	exists, err := r.client.client.SIsMember(ctx, plansListKey, planID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get result: %w", err)
 	}
 
 	if !exists {
-		return nil, fmt.Errorf("project not found: %s", projectID)
+		return nil, fmt.Errorf("plan not found: %s", planID)
 	}
 
 	// Generate a unique ID for the task
 	id := uuid.New().String()
 
 	// Create a new task
-	task := models.NewTask(id, projectID, title, description, priority)
+	task := models.NewTask(id, planID, title, description, priority)
 
 	// Get the next order value for the task
-	projectTasksKey := GetProjectTasksKey(projectID)
-	count, err := r.client.client.ZCard(ctx, projectTasksKey)
+	planTasksKey := GetPlanTasksKey(planID)
+	count, err := r.client.client.ZCard(ctx, planTasksKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task count: %w", err)
 	}
@@ -65,12 +65,12 @@ func (r *TaskRepository) Create(ctx context.Context, projectID, title, descripti
 		return nil, fmt.Errorf("failed to store task: %w", err)
 	}
 
-	// Add task to the project's tasks list with its order as the score
-	_, err = r.client.client.ZAdd(ctx, projectTasksKey, map[string]float64{id: float64(task.Order)})
+	// Add task to the plan's tasks list with its order as the score
+	_, err = r.client.client.ZAdd(ctx, planTasksKey, map[string]float64{id: float64(task.Order)})
 	if err != nil {
-		// Try to clean up the task if adding to the sorted set fails
+		// Try to clean up the task if adding to the set fails
 		r.client.client.Del(ctx, []string{taskKey})
-		return nil, fmt.Errorf("failed to add task to project: %w", err)
+		return nil, fmt.Errorf("failed to add task to plan: %w", err)
 	}
 
 	return task, nil
@@ -113,7 +113,7 @@ func (r *TaskRepository) Update(ctx context.Context, task *models.Task) error {
 		return fmt.Errorf("task not found: %s", task.ID)
 	}
 
-	// Get the current task to check if the project ID has changed
+	// Get the current task to check if the plan ID has changed
 	currentTask, err := r.Get(ctx, task.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get current task: %w", err)
@@ -128,44 +128,20 @@ func (r *TaskRepository) Update(ctx context.Context, task *models.Task) error {
 		return fmt.Errorf("failed to update task: %w", err)
 	}
 
-	// If the project ID has changed, move the task to the new project
-	if currentTask.ProjectID != task.ProjectID {
-		// Remove from the old project's tasks list
-		oldProjectTasksKey := GetProjectTasksKey(currentTask.ProjectID)
-		_, err = r.client.client.ZRem(ctx, oldProjectTasksKey, []string{task.ID})
+	// If the plan ID has changed, move the task to the new plan
+	if currentTask.PlanID != task.PlanID {
+		// Remove from the old plan's tasks list
+		oldPlanTasksKey := GetPlanTasksKey(currentTask.PlanID)
+		_, err = r.client.client.ZRem(ctx, oldPlanTasksKey, []string{task.ID})
 		if err != nil {
-			return fmt.Errorf("failed to remove task from old project: %w", err)
+			return fmt.Errorf("failed to remove task from old plan: %w", err)
 		}
 
-		// Add to the new project's tasks list
-		newProjectTasksKey := GetProjectTasksKey(task.ProjectID)
-		count, err := r.client.client.ZCard(ctx, newProjectTasksKey)
+		// Add to the new plan's tasks list
+		newPlanTasksKey := GetPlanTasksKey(task.PlanID)
+		_, err = r.client.client.ZAdd(ctx, newPlanTasksKey, map[string]float64{task.ID: float64(task.Order)})
 		if err != nil {
-			return fmt.Errorf("failed to get task count for new project: %w", err)
-		}
-
-		// Set the order to be the last task in the new project
-		task.Order = int(count)
-
-		// Update the task with the new order
-		_, err = r.client.client.HSet(ctx, taskKey, task.ToMap())
-		if err != nil {
-			return fmt.Errorf("failed to update task: %w", err)
-		}
-
-		// Set the order to be the last task in the new project
-		task.Order = int(count)
-
-		// Update the task with the new order
-		_, err = r.client.client.HSet(ctx, taskKey, task.ToMap())
-		if err != nil {
-			return fmt.Errorf("failed to update task: %w", err)
-		}
-
-		// Add to the new project's tasks list
-		_, err = r.client.client.ZAdd(ctx, newProjectTasksKey, map[string]float64{task.ID: float64(task.Order)})
-		if err != nil {
-			return fmt.Errorf("failed to add task to new project: %w", err)
+			return fmt.Errorf("failed to add task to new plan: %w", err)
 		}
 	}
 
@@ -174,17 +150,17 @@ func (r *TaskRepository) Update(ctx context.Context, task *models.Task) error {
 
 // Delete removes a task
 func (r *TaskRepository) Delete(ctx context.Context, id string) error {
-	// Get the task to find its project ID
+	// Get the task to find its plan ID
 	task, err := r.Get(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	// Remove the task from the project's tasks list
-	projectTasksKey := GetProjectTasksKey(task.ProjectID)
-	_, err = r.client.client.ZRem(ctx, projectTasksKey, []string{id})
+	// Remove the task from the plan's tasks list
+	planTasksKey := GetPlanTasksKey(task.PlanID)
+	_, err = r.client.client.ZRem(ctx, planTasksKey, []string{id})
 	if err != nil {
-		return fmt.Errorf("failed to remove task from project list: %w", err)
+		return fmt.Errorf("failed to remove task from plan list: %w", err)
 	}
 
 	// Delete the task
@@ -194,28 +170,28 @@ func (r *TaskRepository) Delete(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to delete task: %w", err)
 	}
 
-	// Reorder the remaining tasks in the project
-	return r.reorderProjectTasks(ctx, task.ProjectID)
+	// Reorder the remaining tasks in the plan
+	return r.reorderPlanTasks(ctx, task.PlanID)
 }
 
-// ListByProject returns all tasks for a project, ordered by their sequence
-func (r *TaskRepository) ListByProject(ctx context.Context, projectID string) ([]*models.Task, error) {
-	// Check if the project exists
-	exists, err := r.client.client.SIsMember(ctx, projectsListKey, projectID)
+// ListByPlan returns all tasks for a plan, ordered by their sequence
+func (r *TaskRepository) ListByPlan(ctx context.Context, planID string) ([]*models.Task, error) {
+	// Check if the plan exists
+	exists, err := r.client.client.SIsMember(ctx, plansListKey, planID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check if project exists: %w", err)
+		return nil, fmt.Errorf("failed to check if plan exists: %w", err)
 	}
 
 	if !exists {
-		return nil, fmt.Errorf("project not found: %s", projectID)
+		return nil, fmt.Errorf("plan not found: %s", planID)
 	}
 
-	// Get all task IDs for this project
-	projectTasksKey := GetProjectTasksKey(projectID)
+	// Get all task IDs for this plan
+	planTasksKey := GetPlanTasksKey(planID)
 	opts := options.NewRangeByIndexQuery(0, -1)
-	taskIDs, err := r.client.client.ZRange(ctx, projectTasksKey, opts)
+	taskIDs, err := r.client.client.ZRange(ctx, planTasksKey, opts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get project tasks: %w", err)
+		return nil, fmt.Errorf("failed to get plan tasks: %w", err)
 	}
 
 	tasks := make([]*models.Task, 0, len(taskIDs))
@@ -234,19 +210,19 @@ func (r *TaskRepository) ListByProject(ctx context.Context, projectID string) ([
 
 // ListByStatus returns all tasks with the given status
 func (r *TaskRepository) ListByStatus(ctx context.Context, status models.TaskStatus) ([]*models.Task, error) {
-	// Get all project IDs
-	projectIDs, err := r.client.client.SMembers(ctx, projectsListKey)
+	// Get all plan IDs
+	planIDs, err := r.client.client.SMembers(ctx, plansListKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get project list: %w", err)
+		return nil, fmt.Errorf("failed to get plan list: %w", err)
 	}
 
 	var allTasks []*models.Task
 
-	// For each project, get its tasks and filter by status
-	for projectID, _ := range projectIDs {
-		tasks, err := r.ListByProject(ctx, projectID)
+	// For each plan, get its tasks and filter by status
+	for planID := range planIDs {
+		tasks, err := r.ListByPlan(ctx, planID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get tasks for project %s: %w", projectID, err)
+			return nil, fmt.Errorf("failed to get tasks for plan %s: %w", planID, err)
 		}
 
 		// Filter tasks by status
@@ -260,7 +236,7 @@ func (r *TaskRepository) ListByStatus(ctx context.Context, status models.TaskSta
 	return allTasks, nil
 }
 
-// ReorderTask changes the order of a task within its project
+// ReorderTask changes the order of a task within its plan
 func (r *TaskRepository) ReorderTask(ctx context.Context, taskID string, newOrder int) error {
 	// Get the task
 	task, err := r.Get(ctx, taskID)
@@ -268,15 +244,15 @@ func (r *TaskRepository) ReorderTask(ctx context.Context, taskID string, newOrde
 		return fmt.Errorf("failed to get task: %w", err)
 	}
 
-	// Get all tasks for the project
-	projectTasks, err := r.ListByProject(ctx, task.ProjectID)
+	// Get all tasks for this plan to reorder them
+	tasks, err := r.ListByPlan(ctx, task.PlanID)
 	if err != nil {
-		return fmt.Errorf("failed to get project tasks: %w", err)
+		return fmt.Errorf("failed to list plan tasks: %w", err)
 	}
 
 	// Validate the new order
-	if newOrder < 0 || newOrder >= len(projectTasks) {
-		return fmt.Errorf("invalid order: %d (must be between 0 and %d)", newOrder, len(projectTasks)-1)
+	if newOrder < 0 || newOrder >= len(tasks) {
+		return fmt.Errorf("invalid order: %d (must be between 0 and %d)", newOrder, len(tasks)-1)
 	}
 
 	// If the order hasn't changed, do nothing
@@ -295,32 +271,25 @@ func (r *TaskRepository) ReorderTask(ctx context.Context, taskID string, newOrde
 		return fmt.Errorf("failed to update task order: %w", err)
 	}
 
-	// Update the task's score in the sorted set
-	projectTasksKey := GetProjectTasksKey(task.ProjectID)
-	_, err = r.client.client.ZAdd(ctx, projectTasksKey, map[string]float64{task.ID: float64(newOrder)})
-	if err != nil {
-		return fmt.Errorf("failed to update task order in project: %w", err)
-	}
-
-	// Reorder other tasks in the project
-	return r.reorderProjectTasks(ctx, task.ProjectID)
+	// Reorder all tasks in the plan to ensure they are sequential
+	return r.reorderPlanTasks(ctx, task.PlanID)
 }
 
-// CreateBulk adds multiple tasks to a project in a single operation
-func (r *TaskRepository) CreateBulk(ctx context.Context, projectID string, taskInputs []TaskCreateInput) ([]*models.Task, error) {
-	// Check if the project exists
-	exists, err := r.client.client.SIsMember(ctx, projectsListKey, projectID)
+// CreateBulk adds multiple tasks to a plan in a single operation
+func (r *TaskRepository) CreateBulk(ctx context.Context, planID string, taskInputs []TaskCreateInput) ([]*models.Task, error) {
+	// Check if the plan exists
+	exists, err := r.client.client.SIsMember(ctx, plansListKey, planID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get result: %w", err)
 	}
 
 	if !exists {
-		return nil, fmt.Errorf("project not found: %s", projectID)
+		return nil, fmt.Errorf("plan not found: %s", planID)
 	}
 
 	// Get the next order value for the first task
-	projectTasksKey := GetProjectTasksKey(projectID)
-	count, err := r.client.client.ZCard(ctx, projectTasksKey)
+	planTasksKey := GetPlanTasksKey(planID)
+	count, err := r.client.client.ZCard(ctx, planTasksKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task count: %w", err)
 	}
@@ -348,7 +317,7 @@ func (r *TaskRepository) CreateBulk(ctx context.Context, projectID string, taskI
 		}
 
 		// Create a new task
-		task := models.NewTask(id, projectID, input.Title, description, priority)
+		task := models.NewTask(id, planID, input.Title, description, priority)
 		task.Status = status
 		task.Order = int(count) + i
 
@@ -359,22 +328,22 @@ func (r *TaskRepository) CreateBulk(ctx context.Context, projectID string, taskI
 			// Try to clean up already created tasks
 			for _, createdTask := range createdTasks {
 				r.client.client.Del(ctx, []string{GetTaskKey(createdTask.ID)})
-				r.client.client.ZRem(ctx, projectTasksKey, []string{createdTask.ID})
+				r.client.client.ZRem(ctx, planTasksKey, []string{createdTask.ID})
 			}
 			return nil, fmt.Errorf("failed to store task: %w", err)
 		}
 
-		// Add task to the project's tasks list with its order as the score
-		_, err = r.client.client.ZAdd(ctx, projectTasksKey, map[string]float64{id: float64(task.Order)})
+		// Add task to the plan's tasks list with its order as the score
+		_, err = r.client.client.ZAdd(ctx, planTasksKey, map[string]float64{id: float64(task.Order)})
 		if err != nil {
 			// Try to clean up the task if adding to the sorted set fails
 			r.client.client.Del(ctx, []string{taskKey})
 			// Also clean up already created tasks
 			for _, createdTask := range createdTasks {
 				r.client.client.Del(ctx, []string{GetTaskKey(createdTask.ID)})
-				r.client.client.ZRem(ctx, projectTasksKey, []string{createdTask.ID})
+				r.client.client.ZRem(ctx, planTasksKey, []string{createdTask.ID})
 			}
-			return nil, fmt.Errorf("failed to add task to project: %w", err)
+			return nil, fmt.Errorf("failed to add task to plan: %w", err)
 		}
 
 		createdTasks = append(createdTasks, task)
@@ -383,39 +352,34 @@ func (r *TaskRepository) CreateBulk(ctx context.Context, projectID string, taskI
 	return createdTasks, nil
 }
 
-// reorderProjectTasks updates the order of all tasks in a project to ensure they are sequential
-func (r *TaskRepository) reorderProjectTasks(ctx context.Context, projectID string) error {
-	// Get all task IDs for the project, ordered by their score (order)
-	projectTasksKey := GetProjectTasksKey(projectID)
+// reorderPlanTasks updates the order of all tasks in a plan to ensure they are sequential
+func (r *TaskRepository) reorderPlanTasks(ctx context.Context, planID string) error {
+	// Get all task IDs for the plan, ordered by their score (order)
+	planTasksKey := GetPlanTasksKey(planID)
 	opts := options.NewRangeByIndexQuery(0, -1)
-	taskIDs, err := r.client.client.ZRange(ctx, projectTasksKey, opts)
+	taskIDs, err := r.client.client.ZRange(ctx, planTasksKey, opts)
 	if err != nil {
-		return fmt.Errorf("failed to get project tasks: %w", err)
+		return fmt.Errorf("failed to get plan tasks: %w", err)
 	}
 
-	// Update each task's order to match its position in the list
-	for i, id := range taskIDs {
-		// Get the current score for the task
-		score, err := r.client.client.ZScore(ctx, projectTasksKey, id)
+	// Update each task's order to match its position in the slice
+	for i, taskID := range taskIDs {
+		// Get the task
+		task, err := r.Get(ctx, taskID)
 		if err != nil {
-			return fmt.Errorf("failed to get task score: %w", err)
+			return fmt.Errorf("failed to get task %s: %w", taskID, err)
 		}
 
-		// If the score doesn't match the position, update it
-		if score.Value() != float64(i) {
-			// Update the task's order in the sorted set
-			_, err = r.client.client.ZAdd(ctx, projectTasksKey, map[string]float64{id: float64(i)})
+		if task.Order != i {
+			task.Order = i
+			taskKey := GetTaskKey(task.ID)
+			_, err := r.client.client.HSet(ctx, taskKey, task.ToMap())
 			if err != nil {
 				return fmt.Errorf("failed to update task order: %w", err)
 			}
 
-			// Update the task's order in the hash
-			taskKey := GetTaskKey(id)
-			taskMap := map[string]string{
-				"order":      fmt.Sprintf("%d", i),
-				"updated_at": time.Now().Format(time.RFC3339),
-			}
-			_, err = r.client.client.HSet(ctx, taskKey, taskMap)
+			// Update the task's score in the sorted set
+			_, err = r.client.client.ZAdd(ctx, planTasksKey, map[string]float64{task.ID: float64(i)})
 			if err != nil {
 				return fmt.Errorf("failed to update task order in hash: %w", err)
 			}

@@ -54,12 +54,12 @@ func TestMCPBulkCreateTasks(t *testing.T) {
 	defer valkeyClient.Close()
 
 	// Create repositories
-	projectRepo := storage.NewProjectRepository(valkeyClient)
+	planRepo := storage.NewPlanRepository(valkeyClient)
 	taskRepo := storage.NewTaskRepository(valkeyClient)
 
-	// Create a test project
-	project, err := projectRepo.Create(ctx, "test-app", "Test Project", "Test project description")
-	req.NoError(err, "Failed to create test project")
+	// Create a test plan
+	plan, err := planRepo.Create(ctx, "test-app", "Test Plan", "Test plan description")
+	req.NoError(err, "Failed to create test plan")
 
 	// Create a test HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +67,7 @@ func TestMCPBulkCreateTasks(t *testing.T) {
 		if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/call-tool/bulk_create_tasks") {
 			// Parse the request body
 			var requestBody struct {
-				ProjectID string `json:"project_id"`
+				PlanID string `json:"plan_id"`
 				TasksJSON string `json:"tasks_json"`
 			}
 			err := json.NewDecoder(r.Body).Decode(&requestBody)
@@ -77,7 +77,7 @@ func TestMCPBulkCreateTasks(t *testing.T) {
 			}
 
 			// Validate required fields
-			if requestBody.ProjectID == "" || requestBody.TasksJSON == "" {
+			if requestBody.PlanID == "" || requestBody.TasksJSON == "" {
 				http.Error(w, "Missing required fields", http.StatusBadRequest)
 				return
 			}
@@ -116,7 +116,7 @@ func TestMCPBulkCreateTasks(t *testing.T) {
 			}
 
 			// Create tasks in bulk
-			createdTasks, err := taskRepo.CreateBulk(ctx, requestBody.ProjectID, inputs)
+			createdTasks, err := taskRepo.CreateBulk(ctx, requestBody.PlanID, inputs)
 			if err != nil {
 				http.Error(w, "Failed to create tasks: "+err.Error(), http.StatusInternalServerError)
 				return
@@ -154,7 +154,7 @@ func TestMCPBulkCreateTasks(t *testing.T) {
 	req.NoError(err, "Failed to marshal task inputs")
 
 	requestBody := map[string]string{
-		"project_id": project.ID,
+		"plan_id": plan.ID,
 		"tasks_json": string(taskInputsJSON),
 	}
 	requestBodyJSON, err := json.Marshal(requestBody)
@@ -199,7 +199,7 @@ func TestMCPBulkCreateTasks(t *testing.T) {
 	assert.Equal(2, createdTasks[2].Order)
 
 	// Verify tasks are stored in Valkey
-	tasks, err := taskRepo.ListByProject(ctx, project.ID)
-	req.NoError(err, "Failed to list tasks by project")
-	assert.Equal(3, len(tasks), "Should have 3 tasks in the project")
+	tasks, err := taskRepo.ListByPlan(ctx, plan.ID)
+	req.NoError(err, "Failed to list tasks by plan")
+	assert.Equal(3, len(tasks), "Should have 3 tasks in the plan")
 }

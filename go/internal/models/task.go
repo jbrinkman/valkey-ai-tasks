@@ -24,10 +24,10 @@ const (
 	TaskPriorityHigh   TaskPriority = "high"
 )
 
-// Task represents an individual task within a project
+// Task represents an individual task within a plan
 type Task struct {
 	ID          string       `json:"id"`
-	ProjectID   string       `json:"project_id"`
+	PlanID      string       `json:"plan_id"`
 	Title       string       `json:"title"`
 	Description string       `json:"description"`
 	Status      TaskStatus   `json:"status"`
@@ -38,16 +38,16 @@ type Task struct {
 }
 
 // NewTask creates a new task with the given details
-func NewTask(id, projectID, title, description string, priority TaskPriority) *Task {
+func NewTask(id, planID, title, description string, priority TaskPriority) *Task {
 	now := time.Now()
 	return &Task{
 		ID:          id,
-		ProjectID:   projectID,
+		PlanID:      planID,
 		Title:       title,
 		Description: description,
 		Status:      TaskStatusPending,
 		Priority:    priority,
-		Order:       0, // Will be set when added to the project
+		Order:       0, // Will be set when added to the plan
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -57,7 +57,7 @@ func NewTask(id, projectID, title, description string, priority TaskPriority) *T
 func (t *Task) ToMap() map[string]string {
 	return map[string]string{
 		"id":          t.ID,
-		"project_id":  t.ProjectID,
+		"plan_id":     t.PlanID,
 		"title":       t.Title,
 		"description": t.Description,
 		"status":      string(t.Status),
@@ -71,7 +71,7 @@ func (t *Task) ToMap() map[string]string {
 // FromMap populates a task from a map retrieved from Valkey
 func (t *Task) FromMap(data map[string]string) error {
 	t.ID = data["id"]
-	t.ProjectID = data["project_id"]
+	t.PlanID = data["plan_id"]
 	t.Title = data["title"]
 	t.Description = data["description"]
 	t.Status = TaskStatus(data["status"])

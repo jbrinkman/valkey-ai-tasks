@@ -14,13 +14,13 @@ import (
 
 // MCPGoServer wraps the mark3labs/mcp-go server implementation
 type MCPGoServer struct {
-	server      *server.MCPServer
-	projectRepo storage.ProjectRepository
-	taskRepo    storage.TaskRepository
+	server    *server.MCPServer
+	planRepo  storage.PlanRepositoryInterface
+	taskRepo  storage.TaskRepositoryInterface
 }
 
 // NewMCPGoServer creates a new MCP server using the mark3labs/mcp-go library
-func NewMCPGoServer(projectRepo storage.ProjectRepository, taskRepo storage.TaskRepository) *MCPGoServer {
+func NewMCPGoServer(planRepo storage.PlanRepositoryInterface, taskRepo storage.TaskRepositoryInterface) *MCPGoServer {
 	// Create a new MCP server
 	s := server.NewMCPServer(
 		"Valkey Feature Planning & Task Management",
@@ -30,9 +30,9 @@ func NewMCPGoServer(projectRepo storage.ProjectRepository, taskRepo storage.Task
 	)
 
 	mcpServer := &MCPGoServer{
-		server:      s,
-		projectRepo: projectRepo,
-		taskRepo:    taskRepo,
+		server:    s,
+		planRepo:  planRepo,
+		taskRepo:  taskRepo,
 	}
 
 	// Register all tools
@@ -54,33 +54,33 @@ func (s *MCPGoServer) Start(port int) error {
 
 // registerTools registers all the task management tools with the MCP server
 func (s *MCPGoServer) registerTools() {
-	// Project tools
-	s.registerCreateProjectTool()
-	s.registerGetProjectTool()
-	s.registerListProjectsTool()
-	s.registerListProjectsByApplicationTool()
-	s.registerUpdateProjectTool()
-	s.registerDeleteProjectTool()
+	// Plan tools
+	s.registerCreatePlanTool()
+	s.registerGetPlanTool()
+	s.registerListPlansTool()
+	s.registerListPlansByApplicationTool()
+	s.registerUpdatePlanTool()
+	s.registerDeletePlanTool()
 
 	// Task tools
 	s.registerCreateTaskTool()
-	s.registerBulkCreateTasksTool() // Add the new bulk create tasks tool
 	s.registerGetTaskTool()
-	s.registerListTasksByProjectTool()
+	s.registerListTasksByPlanTool()
 	s.registerListTasksByStatusTool()
 	s.registerUpdateTaskTool()
 	s.registerDeleteTaskTool()
+	s.registerBulkCreateTasksTool()
 	s.registerReorderTaskTool()
 }
 
-// Project tools implementation
+// Plan tools implementation
 
-func (s *MCPGoServer) registerCreateProjectTool() {
-	tool := mcp.NewTool("create_project",
-		mcp.WithDescription("Create a new project for planning and organizing a feature or initiative"),
+func (s *MCPGoServer) registerCreatePlanTool() {
+	tool := mcp.NewTool("create_plan",
+		mcp.WithDescription("Create a new plan for planning and organizing a feature or initiative"),
 		mcp.WithString("application_id",
 			mcp.Required(),
-			mcp.Description("The application ID this project belongs to"),
+			mcp.Description("The application ID this plan belongs to"),
 		),
 		mcp.WithString("name",
 			mcp.Required(),
@@ -105,26 +105,26 @@ func (s *MCPGoServer) registerCreateProjectTool() {
 
 		description := request.GetString("description", "no description provided")
 
-		// Create the project
-		project, err := s.projectRepo.Create(ctx, applicationID, name, description)
+		// Create the plan
+		plan, err := s.planRepo.Create(ctx, applicationID, name, description)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to create project: %v", err)), nil
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to create plan: %v", err)), nil
 		}
 
-		projectJson, err := json.Marshal(project)
+		planJson, err := json.Marshal(plan)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal project: %v", err)), nil
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal plan: %v", err)), nil
 		}
-		return mcp.NewToolResultText(string(projectJson)), nil
+		return mcp.NewToolResultText(string(planJson)), nil
 	})
 }
 
-func (s *MCPGoServer) registerGetProjectTool() {
-	tool := mcp.NewTool("get_project",
-		mcp.WithDescription("Retrieve details about a specific feature planning project"),
+func (s *MCPGoServer) registerGetPlanTool() {
+	tool := mcp.NewTool("get_plan",
+		mcp.WithDescription("Retrieve details about a specific feature planning plan"),
 		mcp.WithString("id",
 			mcp.Required(),
-			mcp.Description("Project ID"),
+			mcp.Description("Plan ID"),
 		),
 	)
 
@@ -134,44 +134,44 @@ func (s *MCPGoServer) registerGetProjectTool() {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		project, err := s.projectRepo.Get(ctx, id)
+		plan, err := s.planRepo.Get(ctx, id)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to get project: %v", err)), nil
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to get plan: %v", err)), nil
 		}
 
-		projectJson, err := json.Marshal(project)
+		planJson, err := json.Marshal(plan)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal project: %v", err)), nil
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal plan: %v", err)), nil
 		}
-		return mcp.NewToolResultText(string(projectJson)), nil
+		return mcp.NewToolResultText(string(planJson)), nil
 	})
 }
 
-func (s *MCPGoServer) registerListProjectsTool() {
-	tool := mcp.NewTool("list_projects",
-		mcp.WithDescription("List all available feature planning projects"),
+func (s *MCPGoServer) registerListPlansTool() {
+	tool := mcp.NewTool("list_plans",
+		mcp.WithDescription("List all available feature planning plans"),
 	)
 
 	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		projects, err := s.projectRepo.List(ctx)
+		plans, err := s.planRepo.List(ctx)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to list projects: %v", err)), nil
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to list plans: %v", err)), nil
 		}
 
-		projectsJson, err := json.Marshal(projects)
+		plansJson, err := json.Marshal(plans)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal projects: %v", err)), nil
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal plans: %v", err)), nil
 		}
-		return mcp.NewToolResultText(string(projectsJson)), nil
+		return mcp.NewToolResultText(string(plansJson)), nil
 	})
 }
 
-func (s *MCPGoServer) registerListProjectsByApplicationTool() {
-	tool := mcp.NewTool("list_projects_by_application",
-		mcp.WithDescription("List all feature planning projects for a specific application"),
+func (s *MCPGoServer) registerListPlansByApplicationTool() {
+	tool := mcp.NewTool("list_plans_by_application",
+		mcp.WithDescription("List all feature planning plans for a specific application"),
 		mcp.WithString("application_id",
 			mcp.Required(),
-			mcp.Description("Application ID to filter projects by"),
+			mcp.Description("Application ID to filter plans by"),
 		),
 	)
 
@@ -181,31 +181,31 @@ func (s *MCPGoServer) registerListProjectsByApplicationTool() {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		projects, err := s.projectRepo.ListByApplication(ctx, applicationID)
+		plans, err := s.planRepo.ListByApplication(ctx, applicationID)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to list projects by application: %v", err)), nil
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to list plans by application: %v", err)), nil
 		}
 
-		projectsJson, err := json.Marshal(projects)
+		plansJson, err := json.Marshal(plans)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal projects: %v", err)), nil
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal plans: %v", err)), nil
 		}
-		return mcp.NewToolResultText(string(projectsJson)), nil
+		return mcp.NewToolResultText(string(plansJson)), nil
 	})
 }
 
-func (s *MCPGoServer) registerUpdateProjectTool() {
-	tool := mcp.NewTool("update_project",
-		mcp.WithDescription("Update the details or scope of a feature planning project"),
+func (s *MCPGoServer) registerUpdatePlanTool() {
+	tool := mcp.NewTool("update_plan",
+		mcp.WithDescription("Update the details or scope of a feature planning plan"),
 		mcp.WithString("id",
 			mcp.Required(),
-			mcp.Description("Project ID"),
+			mcp.Description("Plan ID"),
 		),
 		mcp.WithString("name",
-			mcp.Description("New project name (optional)"),
+			mcp.Description("New plan name (optional)"),
 		),
 		mcp.WithString("description",
-			mcp.Description("New project description (optional)"),
+			mcp.Description("New plan description (optional)"),
 		),
 	)
 
@@ -215,43 +215,43 @@ func (s *MCPGoServer) registerUpdateProjectTool() {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		// Get the existing project
-		project, err := s.projectRepo.Get(ctx, id)
+		// Get the existing plan
+		plan, err := s.planRepo.Get(ctx, id)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to get project: %v", err)), nil
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to get plan: %v", err)), nil
 		}
 
 		// Update fields if provided
-		name := request.GetString("name", project.Name)
-		if name != project.Name {
-			project.Name = name
+		name := request.GetString("name", plan.Name)
+		if name != plan.Name {
+			plan.Name = name
 		}
 
-		description := request.GetString("description", project.Description)
-		if description != project.Description {
-			project.Description = description
+		description := request.GetString("description", plan.Description)
+		if description != plan.Description {
+			plan.Description = description
 		}
 
-		// Save the updated project
-		err = s.projectRepo.Update(ctx, project)
+		// Save the updated plan
+		err = s.planRepo.Update(ctx, plan)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to update project: %v", err)), nil
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to update plan: %v", err)), nil
 		}
 
-		projectJson, err := json.Marshal(project)
+		planJson, err := json.Marshal(plan)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal project: %v", err)), nil
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal plan: %v", err)), nil
 		}
-		return mcp.NewToolResultText(string(projectJson)), nil
+		return mcp.NewToolResultText(string(planJson)), nil
 	})
 }
 
-func (s *MCPGoServer) registerDeleteProjectTool() {
-	tool := mcp.NewTool("delete_project",
-		mcp.WithDescription("Remove a completed or cancelled feature planning project"),
+func (s *MCPGoServer) registerDeletePlanTool() {
+	tool := mcp.NewTool("delete_plan",
+		mcp.WithDescription("Remove a completed or cancelled feature planning plan"),
 		mcp.WithString("id",
 			mcp.Required(),
-			mcp.Description("Project ID"),
+			mcp.Description("Plan ID"),
 		),
 	)
 
@@ -261,12 +261,12 @@ func (s *MCPGoServer) registerDeleteProjectTool() {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		err = s.projectRepo.Delete(ctx, id)
+		err = s.planRepo.Delete(ctx, id)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to delete project: %v", err)), nil
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to delete plan: %v", err)), nil
 		}
 
-		return mcp.NewToolResultText("Project deleted"), nil
+		return mcp.NewToolResultText("Plan deleted"), nil
 	})
 }
 
@@ -275,9 +275,9 @@ func (s *MCPGoServer) registerDeleteProjectTool() {
 func (s *MCPGoServer) registerCreateTaskTool() {
 	tool := mcp.NewTool("create_task",
 		mcp.WithDescription("Create a new task as part of a feature implementation plan"),
-		mcp.WithString("project_id",
+		mcp.WithString("plan_id",
 			mcp.Required(),
-			mcp.Description("Project ID this task belongs to"),
+			mcp.Description("Plan ID this task belongs to"),
 		),
 		mcp.WithString("title",
 			mcp.Required(),
@@ -353,30 +353,31 @@ func (s *MCPGoServer) registerGetTaskTool() {
 	})
 }
 
-func (s *MCPGoServer) registerListTasksByProjectTool() {
-	tool := mcp.NewTool("list_tasks_by_project",
+func (s *MCPGoServer) registerListTasksByPlanTool() {
+	tool := mcp.NewTool("list_tasks_by_plan",
 		mcp.WithDescription("List all tasks in a feature implementation plan"),
-		mcp.WithString("project_id",
+		mcp.WithString("plan_id",
 			mcp.Required(),
-			mcp.Description("Project ID to filter tasks by"),
+			mcp.Description("Plan ID to filter tasks by"),
 		),
 	)
 
 	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		projectID, err := request.RequireString("project_id")
+		planID, err := request.RequireString("plan_id")
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		tasks, err := s.taskRepo.ListByProject(ctx, projectID)
+		tasks, err := s.taskRepo.ListByPlan(ctx, planID)
 		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to list tasks by project: %v", err)), nil
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to list tasks by plan: %v", err)), nil
 		}
 
 		tasksJson, err := json.Marshal(tasks)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal tasks: %v", err)), nil
 		}
+
 		return mcp.NewToolResultText(string(tasksJson)), nil
 	})
 }
@@ -504,9 +505,9 @@ func (s *MCPGoServer) registerDeleteTaskTool() {
 func (s *MCPGoServer) registerBulkCreateTasksTool() {
 	tool := mcp.NewTool("bulk_create_tasks",
 		mcp.WithDescription("Create multiple tasks at once for a feature implementation plan"),
-		mcp.WithString("project_id",
+		mcp.WithString("plan_id",
 			mcp.Required(),
-			mcp.Description("Project ID these tasks belong to"),
+			mcp.Description("Plan ID these tasks belong to"),
 		),
 		mcp.WithString("tasks_json",
 			mcp.Required(),
@@ -515,8 +516,7 @@ func (s *MCPGoServer) registerBulkCreateTasksTool() {
 	)
 
 	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		// Extract project ID
-		projectID, err := request.RequireString("project_id")
+		planID, err := request.RequireString("plan_id")
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -605,12 +605,11 @@ func (s *MCPGoServer) registerBulkCreateTasksTool() {
 				Status:      models.TaskStatus(statusStr),
 				Priority:    models.TaskPriority(priorityStr),
 			}
-
 			taskInputs = append(taskInputs, taskInput)
 		}
 
 		// Create tasks in bulk
-		createdTasks, err := s.taskRepo.CreateBulk(ctx, projectID, taskInputs)
+		createdTasks, err := s.taskRepo.CreateBulk(ctx, planID, taskInputs)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to create tasks: %v", err)), nil
 		}

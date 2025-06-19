@@ -51,8 +51,8 @@ go/
 
 The MCP server exposes the following endpoints:
 
-- `list_resources` - List available resources (projects and tasks)
-- `read_resource` - Read a specific resource (project or task)
+- `list_resources` - List available resources (plans and tasks)
+- `read_resource` - Read a specific resource (plan or task)
 - `create_resource` - Create a new resource
 - `update_resource` - Update an existing resource
 - `delete_resource` - Delete a resource

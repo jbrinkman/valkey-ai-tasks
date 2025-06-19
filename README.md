@@ -1,10 +1,10 @@
 # Valkey MCP Task Management Server
 
-A task management system that implements the Model Context Protocol (MCP) for seamless integration with agentic AI tools. This system allows AI agents to create, manage, and track tasks within projects using Valkey as the persistence layer.
+A task management system that implements the Model Context Protocol (MCP) for seamless integration with agentic AI tools. This system allows AI agents to create, manage, and track tasks within plans using Valkey as the persistence layer.
 
 ## Features
 
-- Project management (create, read, update, delete)
+- Plan management (create, read, update, delete)
 - Task management (create, read, update, delete)
 - Task ordering and prioritization
 - Status tracking for tasks
