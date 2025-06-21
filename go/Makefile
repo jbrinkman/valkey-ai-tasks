@@ -74,6 +74,10 @@ clean:
 	@rm -rf $(COVERAGE_DIR)
 	@find . -type f -name "*.test" -delete
 
+run:
+	@echo "Running application..."
+	@go run cmd/mcpserver/main.go
+
 # Help target
 help:
 	@echo "Available targets:"

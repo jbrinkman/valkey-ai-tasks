@@ -15,9 +15,9 @@ import (
 
 // MCPGoServer wraps the mark3labs/mcp-go server implementation
 type MCPGoServer struct {
-	server    *server.MCPServer
-	planRepo  storage.PlanRepositoryInterface
-	taskRepo  storage.TaskRepositoryInterface
+	server   *server.MCPServer
+	planRepo storage.PlanRepositoryInterface
+	taskRepo storage.TaskRepositoryInterface
 }
 
 // NewMCPGoServer creates a new MCP server using the mark3labs/mcp-go library
@@ -31,9 +31,9 @@ func NewMCPGoServer(planRepo storage.PlanRepositoryInterface, taskRepo storage.T
 	)
 
 	mcpServer := &MCPGoServer{
-		server:    s,
-		planRepo:  planRepo,
-		taskRepo:  taskRepo,
+		server:   s,
+		planRepo: planRepo,
+		taskRepo: taskRepo,
 	}
 
 	// Register all tools
@@ -74,6 +74,7 @@ func (s *MCPGoServer) registerTools() {
 	s.registerDeleteTaskTool()
 	s.registerBulkCreateTasksTool()
 	s.registerReorderTaskTool()
+	s.registerListOrphanedTasksTool()
 }
 
 // Plan tools implementation
@@ -767,5 +768,28 @@ func (s *MCPGoServer) registerReorderTaskTool() {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal task: %v", err)), nil
 		}
 		return mcp.NewToolResultText(string(taskJson)), nil
+	})
+}
+
+// registerListOrphanedTasksTool registers a tool to list tasks that reference non-existent plans
+func (s *MCPGoServer) registerListOrphanedTasksTool() {
+	tool := mcp.NewTool("list_orphaned_tasks",
+		mcp.WithDescription("List all tasks that reference non-existent plans"),
+	)
+
+	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		// Get orphaned tasks
+		tasks, err := s.taskRepo.ListOrphanedTasks(ctx)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to list orphaned tasks: %v", err)), nil
+		}
+
+		// Marshal tasks to JSON
+		tasksJson, err := json.Marshal(tasks)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal tasks: %v", err)), nil
+		}
+
+		return mcp.NewToolResultText(string(tasksJson)), nil
 	})
 }

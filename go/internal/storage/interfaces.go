@@ -37,6 +37,7 @@ type TaskRepositoryInterface interface {
 	ListByPlan(ctx context.Context, planID string) ([]*models.Task, error)
 	ListByStatus(ctx context.Context, status models.TaskStatus) ([]*models.Task, error)
 	ReorderTask(ctx context.Context, taskID string, newOrder int) error
+	ListOrphanedTasks(ctx context.Context) ([]*models.Task, error)
 }
 
 // Ensure the concrete types implement the interfaces

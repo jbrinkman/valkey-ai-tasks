@@ -150,7 +150,7 @@ func (r *TaskRepository) Update(ctx context.Context, task *models.Task) error {
 		if err != nil {
 			return fmt.Errorf("failed to add task to new plan: %w", err)
 		}
-		
+
 		// Update status for both plans
 		err = r.UpdatePlanStatus(ctx, currentTask.PlanID)
 		if err != nil {
@@ -430,6 +430,80 @@ func (r *TaskRepository) reorderPlanTasks(ctx context.Context, planID string) er
 	}
 
 	return nil
+}
+
+// ListOrphanedTasks returns all tasks that reference a non-existent plan
+func (r *TaskRepository) ListOrphanedTasks(ctx context.Context) ([]*models.Task, error) {
+	var orphanedTasks []*models.Task
+
+	// Get all task IDs
+	taskIDs, err := r.getAllTaskIDs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all task IDs: %w", err)
+	}
+
+	// Get all plan IDs for checking existence
+	planIDs, err := r.client.client.SMembers(ctx, plansListKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get plan IDs: %w", err)
+	}
+
+	// Create a map for faster lookup of plan existence
+	existingPlans := make(map[string]bool)
+	for planID := range planIDs {
+		existingPlans[planID] = true
+	}
+
+	// Check each task for orphaned status
+	for _, taskID := range taskIDs {
+		// Get the task
+		task, err := r.Get(ctx, taskID)
+		if err != nil {
+			continue // Skip tasks that can't be retrieved
+		}
+
+		// If the task has a plan ID but the plan doesn't exist, it's orphaned
+		if task.PlanID != "" && !existingPlans[task.PlanID] {
+			orphanedTasks = append(orphanedTasks, task)
+		}
+	}
+
+	return orphanedTasks, nil
+}
+
+// getAllTaskIDs returns all task IDs by scanning the task keys
+func (r *TaskRepository) getAllTaskIDs(ctx context.Context) ([]string, error) {
+	// Get all tasks by listing all plan tasks
+	var taskIDs []string
+	seenTasks := make(map[string]bool)
+
+	// Get all plan IDs
+	planIDs, err := r.client.client.SMembers(ctx, plansListKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get plan IDs: %w", err)
+	}
+
+	// For each plan, get its tasks
+	for planID := range planIDs {
+		planTasksKey := GetPlanTasksKey(planID)
+
+		// Get all task IDs for this plan using ZRANGE
+		opts := options.NewRangeByIndexQuery(0, -1)
+		planTaskIDs, err := r.client.client.ZRange(ctx, planTasksKey, opts)
+		if err != nil {
+			continue // Skip plans with errors
+		}
+
+		// Add unique task IDs to our list
+		for _, taskID := range planTaskIDs {
+			if !seenTasks[taskID] {
+				taskIDs = append(taskIDs, taskID)
+				seenTasks[taskID] = true
+			}
+		}
+	}
+
+	return taskIDs, nil
 }
 
 // UpdatePlanStatus automatically updates a plan's status based on its tasks

@@ -3,6 +3,7 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -13,7 +14,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/valkey"
 	"github.com/testcontainers/testcontainers-go/wait"
-	valkeyglide "github.com/valkey-io/valkey-glide/go/v2"
+	glide "github.com/valkey-io/valkey-glide/go/v2"
 	"github.com/valkey-io/valkey-glide/go/v2/config"
 )
 
@@ -30,7 +31,7 @@ const (
 type ValkeyContainer struct {
 	Container *valkey.ValkeyContainer
 	URI       string
-	Client    *valkeyglide.Client
+	Client    *glide.Client
 }
 
 // StartValkeyContainer starts a Valkey container for testing
@@ -66,7 +67,7 @@ func StartValkeyContainer(ctx context.Context, t *testing.T) (*ValkeyContainer, 
 	clientConfig := config.NewClientConfiguration().WithAddress(address)
 
 	// Create Valkey client
-	client, err := valkeyglide.NewClient(clientConfig)
+	client, err := glide.NewClient(clientConfig)
 	req.NoError(err, "Failed to create Valkey client")
 
 	// Test connection
@@ -121,4 +122,20 @@ func SetupValkeyTest(t *testing.T) (context.Context, *ValkeyContainer, func()) {
 	}
 
 	return ctx, container, cleanup
+}
+
+// ParseEndpoint parses a host:port endpoint string and returns the host and port
+func ParseEndpoint(endpoint string) (string, int, error) {
+	parts := strings.Split(endpoint, ":")
+	if len(parts) != 2 {
+		return "", 0, errors.New("invalid endpoint format, expected host:port")
+	}
+
+	host := parts[0]
+	port, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to parse port: %w", err)
+	}
+
+	return host, port, nil
 }

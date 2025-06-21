@@ -274,5 +274,32 @@ func (r *MockTaskRepository) ReorderTask(ctx context.Context, id string, newOrde
 	return nil
 }
 
+// ListOrphanedTasks returns all tasks that reference non-existent plans
+func (r *MockTaskRepository) ListOrphanedTasks(ctx context.Context) ([]*models.Task, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var orphanedTasks []*models.Task
+
+	// Get all existing plan IDs
+	existingPlans := make(map[string]bool)
+	if r.planRepo != nil {
+		for planID := range r.planRepo.plans {
+			existingPlans[planID] = true
+		}
+	}
+
+	// Find tasks with non-existent plan IDs
+	for _, task := range r.tasks {
+		if task.PlanID != "" && !existingPlans[task.PlanID] {
+			// Create a copy of the task
+			taskCopy := *task
+			orphanedTasks = append(orphanedTasks, &taskCopy)
+		}
+	}
+
+	return orphanedTasks, nil
+}
+
 // Ensure MockTaskRepository implements the TaskRepositoryInterface
 var _ storage.TaskRepositoryInterface = (*MockTaskRepository)(nil)
