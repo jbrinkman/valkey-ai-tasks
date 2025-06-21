@@ -33,6 +33,50 @@ type testMCPGoServer struct {
 	taskRepo storage.TaskRepositoryInterface
 }
 
+// registerListTasksByPlanAndStatusTool implements the same method as MCPGoServer for testing
+func (s *testMCPGoServer) registerListTasksByPlanAndStatusTool() {
+	tool := mcp.NewTool("list_tasks_by_plan_and_status",
+		mcp.WithDescription("Find tasks by both plan ID and status (pending, in progress, completed, cancelled)"),
+		mcp.WithString("plan_id",
+			mcp.Required(),
+			mcp.Description("Plan ID to filter tasks by"),
+		),
+		mcp.WithString("status",
+			mcp.Required(),
+			mcp.Description("Task status to filter by"),
+			mcp.Enum("pending", "in_progress", "completed", "cancelled"),
+		),
+	)
+
+	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		// Extract parameters
+		planID, err := request.RequireString("plan_id")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		statusStr, err := request.RequireString("status")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		// Convert status string to TaskStatus
+		status := models.TaskStatus(statusStr)
+
+		// Get tasks by plan ID and status
+		tasks, err := s.taskRepo.ListByPlanAndStatus(ctx, planID, status)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to list tasks by plan and status: %v", err)), nil
+		}
+
+		tasksJson, err := json.Marshal(tasks)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal tasks: %v", err)), nil
+		}
+		return mcp.NewToolResultText(string(tasksJson)), nil
+	})
+}
+
 // registerBulkCreateTasksTool implements the same method as MCPGoServer for testing
 func (s *testMCPGoServer) registerBulkCreateTasksTool() {
 	tool := mcp.NewTool("bulk_create_tasks",
@@ -228,6 +272,170 @@ func TestRegisterBulkCreateTasksTool(t *testing.T) {
 	storedTasks, err := mockTaskRepo.ListByPlan(ctx, plan.ID)
 	require.NoError(t, err)
 	assert.Len(t, storedTasks, 3)
+}
+
+// TestRegisterListTasksByPlanAndStatusTool tests the list_tasks_by_plan_and_status MCP tool
+func TestRegisterListTasksByPlanAndStatusTool(t *testing.T) {
+	// Create mock repositories
+	mockPlanRepo := mocks.NewMockPlanRepository()
+	mockTaskRepo := mocks.NewMockTaskRepository(mockPlanRepo)
+
+	// Create a test plan
+	ctx := context.Background()
+	plan, err := mockPlanRepo.Create(ctx, "app-123", "Test Plan", "Test Plan Description")
+	require.NoError(t, err)
+	require.NotNil(t, plan)
+
+	// Create tasks with different statuses
+	task1, err := mockTaskRepo.Create(ctx, plan.ID, "Task 1", "Description 1", models.TaskPriorityMedium)
+	require.NoError(t, err)
+	task1.Status = models.TaskStatusInProgress
+	err = mockTaskRepo.Update(ctx, task1)
+	require.NoError(t, err)
+
+	task2, err := mockTaskRepo.Create(ctx, plan.ID, "Task 2", "Description 2", models.TaskPriorityMedium)
+	require.NoError(t, err)
+	task2.Status = models.TaskStatusCompleted
+	err = mockTaskRepo.Update(ctx, task2)
+	require.NoError(t, err)
+
+	task3, err := mockTaskRepo.Create(ctx, plan.ID, "Task 3", "Description 3", models.TaskPriorityMedium)
+	require.NoError(t, err)
+	task3.Status = models.TaskStatusInProgress
+	err = mockTaskRepo.Update(ctx, task3)
+	require.NoError(t, err)
+
+	// Create a test MCP server with our repositories
+	server := &testMCPGoServer{
+		planRepo: mockPlanRepo,
+		taskRepo: mockTaskRepo,
+	}
+
+	// Create a mock tool registry to capture the registered tool
+	var toolHandler func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error)
+
+	mockRegistry := &mockToolRegistry{
+		addToolFunc: func(tool mcp.Tool, handler func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error)) {
+			toolHandler = handler
+		},
+	}
+
+	// Set the mock registry as the server field
+	server.server = mockRegistry
+
+	// Register the list tasks by plan and status tool
+	server.registerListTasksByPlanAndStatusTool()
+
+	// Verify the tool handler was registered
+	require.NotNil(t, toolHandler)
+
+	// Create a mock tool request for in-progress tasks
+	request := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Name: "list_tasks_by_plan_and_status",
+			Arguments: map[string]interface{}{
+				"plan_id": plan.ID,
+				"status":  string(models.TaskStatusInProgress),
+			},
+		},
+	}
+
+	// Call the handler
+	result, err := toolHandler(ctx, request)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Unmarshal the result
+	var tasks []*models.Task
+	// Check if we got a text content result
+	require.NotEmpty(t, result.Content, "Expected non-empty content")
+	
+	// Extract the text content for in-progress tasks
+	textContent1 := ""
+	switch content := result.Content[0].(type) {
+	case *mcp.TextContent:
+		textContent1 = content.Text
+	case mcp.TextContent:
+		textContent1 = content.Text
+	default:
+		require.Fail(t, "Expected TextContent, got %T", result.Content[0])
+	}
+
+	err = json.Unmarshal([]byte(textContent1), &tasks)
+	require.NoError(t, err)
+
+	// Verify we got the expected tasks
+	require.Equal(t, 2, len(tasks), "Should have found 2 in-progress tasks")
+	assert.Equal(t, task1.ID, tasks[0].ID, "First task ID should match")
+	assert.Equal(t, task3.ID, tasks[1].ID, "Second task ID should match")
+	assert.Equal(t, models.TaskStatusInProgress, tasks[0].Status, "First task status should be in-progress")
+	assert.Equal(t, models.TaskStatusInProgress, tasks[1].Status, "Second task status should be in-progress")
+
+	// Test with completed status
+	request = mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Name: "list_tasks_by_plan_and_status",
+			Arguments: map[string]interface{}{
+				"plan_id": plan.ID,
+				"status":  string(models.TaskStatusCompleted),
+			},
+		},
+	}
+
+	result, err = toolHandler(ctx, request)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Check if we got a text content result
+	require.NotEmpty(t, result.Content, "Expected non-empty content")
+	
+	// Extract the text content for completed tasks
+	textContent2 := ""
+	switch content := result.Content[0].(type) {
+	case *mcp.TextContent:
+		textContent2 = content.Text
+	case mcp.TextContent:
+		textContent2 = content.Text
+	default:
+		require.Fail(t, "Expected TextContent, got %T", result.Content[0])
+	}
+
+	tasks = nil // Clear previous tasks
+	err = json.Unmarshal([]byte(textContent2), &tasks)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, len(tasks), "Should have found 1 completed task")
+	assert.Equal(t, task2.ID, tasks[0].ID, "Task ID should match")
+	assert.Equal(t, models.TaskStatusCompleted, tasks[0].Status, "Task status should be completed")
+
+	// Test with invalid plan ID
+	request = mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Name: "list_tasks_by_plan_and_status",
+			Arguments: map[string]interface{}{
+				"plan_id": "invalid-plan-id",
+				"status":  string(models.TaskStatusInProgress),
+			},
+		},
+	}
+
+	result, err = toolHandler(ctx, request)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// For error results, check the content
+	// Extract the text content
+	var textContent string
+	switch content := result.Content[0].(type) {
+	case *mcp.TextContent:
+		textContent = content.Text
+	case mcp.TextContent:
+		textContent = content.Text
+	default:
+		require.Fail(t, "Expected TextContent, got %T", result.Content[0])
+	}
+
+	assert.Contains(t, textContent, "Failed to list tasks by plan and status")
 }
 
 func TestRegisterBulkCreateTasksToolErrors(t *testing.T) {

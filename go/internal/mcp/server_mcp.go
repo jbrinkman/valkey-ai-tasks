@@ -70,6 +70,7 @@ func (s *MCPGoServer) registerTools() {
 	s.registerGetTaskTool()
 	s.registerListTasksByPlanTool()
 	s.registerListTasksByStatusTool()
+	s.registerListTasksByPlanAndStatusTool() // New tool
 	s.registerUpdateTaskTool()
 	s.registerDeleteTaskTool()
 	s.registerBulkCreateTasksTool()
@@ -768,6 +769,50 @@ func (s *MCPGoServer) registerReorderTaskTool() {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal task: %v", err)), nil
 		}
 		return mcp.NewToolResultText(string(taskJson)), nil
+	})
+}
+
+// registerListTasksByPlanAndStatusTool registers a tool to list tasks by both plan ID and status
+func (s *MCPGoServer) registerListTasksByPlanAndStatusTool() {
+	tool := mcp.NewTool("list_tasks_by_plan_and_status",
+		mcp.WithDescription("Find tasks by both plan ID and status (pending, in progress, completed, cancelled)"),
+		mcp.WithString("plan_id",
+			mcp.Required(),
+			mcp.Description("Plan ID to filter tasks by"),
+		),
+		mcp.WithString("status",
+			mcp.Required(),
+			mcp.Description("Task status to filter by"),
+			mcp.Enum("pending", "in_progress", "completed", "cancelled"),
+		),
+	)
+
+	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		// Extract parameters
+		planID, err := request.RequireString("plan_id")
+		if err != nil {
+			return nil, err
+		}
+
+		statusStr, err := request.RequireString("status")
+		if err != nil {
+			return nil, err
+		}
+
+		// Convert status string to TaskStatus
+		status := models.TaskStatus(statusStr)
+
+		// Get tasks by plan ID and status
+		tasks, err := s.taskRepo.ListByPlanAndStatus(ctx, planID, status)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to list tasks by plan and status: %v", err)), nil
+		}
+
+		tasksJson, err := json.Marshal(tasks)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal tasks: %v", err)), nil
+		}
+		return mcp.NewToolResultText(string(tasksJson)), nil
 	})
 }
 

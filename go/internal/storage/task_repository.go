@@ -557,6 +557,25 @@ func (r *TaskRepository) getAllTaskIDs(ctx context.Context) ([]string, error) {
 	return taskIDs, nil
 }
 
+// ListByPlanAndStatus returns all tasks for a plan with the given status
+func (r *TaskRepository) ListByPlanAndStatus(ctx context.Context, planID string, status models.TaskStatus) ([]*models.Task, error) {
+	// Get all tasks for the plan
+	tasks, err := r.ListByPlan(ctx, planID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tasks for plan %s: %w", planID, err)
+	}
+
+	// Filter tasks by status
+	filteredTasks := make([]*models.Task, 0)
+	for _, task := range tasks {
+		if task.Status == status {
+			filteredTasks = append(filteredTasks, task)
+		}
+	}
+
+	return filteredTasks, nil
+}
+
 // UpdatePlanStatus automatically updates a plan's status based on its tasks
 func (r *TaskRepository) UpdatePlanStatus(ctx context.Context, planID string) error {
 	// Get all tasks for the plan

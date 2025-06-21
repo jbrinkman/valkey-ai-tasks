@@ -274,6 +274,42 @@ func (r *MockTaskRepository) ReorderTask(ctx context.Context, id string, newOrde
 	return nil
 }
 
+// ListByPlanAndStatus returns all tasks for a plan with the given status
+func (r *MockTaskRepository) ListByPlanAndStatus(ctx context.Context, planID string, status models.TaskStatus) ([]*models.Task, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	// Check if the plan exists
+	if r.planRepo != nil {
+		_, err := r.planRepo.Get(ctx, planID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Get all tasks for the plan
+	taskIDs, exists := r.planTasks[planID]
+	if !exists {
+		return []*models.Task{}, nil
+	}
+
+	// Filter tasks by status
+	var filteredTasks []*models.Task
+	for _, id := range taskIDs {
+		task, exists := r.tasks[id]
+		if exists && task.Status == status {
+			filteredTasks = append(filteredTasks, task)
+		}
+	}
+
+	// Sort by order
+	sort.Slice(filteredTasks, func(i, j int) bool {
+		return filteredTasks[i].Order < filteredTasks[j].Order
+	})
+
+	return filteredTasks, nil
+}
+
 // ListOrphanedTasks returns all tasks that reference non-existent plans
 func (r *MockTaskRepository) ListOrphanedTasks(ctx context.Context) ([]*models.Task, error) {
 	r.mu.RLock()

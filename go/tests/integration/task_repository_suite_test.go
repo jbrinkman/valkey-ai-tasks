@@ -520,6 +520,86 @@ func (s *TaskRepositorySuite) TestCreateBulkTasks() {
 	s.Equal(3, len(tasks), "Should have 3 tasks in the plan")
 }
 
+// TestListTasksByPlanAndStatus tests listing tasks by both plan ID and status
+func (s *TaskRepositorySuite) TestListTasksByPlanAndStatus() {
+	taskRepo := s.GetTaskRepository()
+
+	// Create a second plan to ensure filtering by plan works
+	planRepo := s.GetPlanRepository()
+	appID := "test-app-" + uuid.New().String()
+	secondPlan, err := planRepo.Create(s.Context, appID, "Second Plan", "Second plan description")
+	s.NoError(err, "Failed to create second test plan")
+
+	// Create tasks with different statuses in both plans
+	// Tasks in the first plan
+	task1, err := taskRepo.Create(s.Context, s.TestPlan.ID, "Task 1", "Description 1", models.TaskPriorityMedium)
+	s.NoError(err, "Failed to create task 1")
+	task1.Status = models.TaskStatusInProgress
+	err = taskRepo.Update(s.Context, task1)
+	s.NoError(err, "Failed to update task 1 status")
+
+	task2, err := taskRepo.Create(s.Context, s.TestPlan.ID, "Task 2", "Description 2", models.TaskPriorityMedium)
+	s.NoError(err, "Failed to create task 2")
+	task2.Status = models.TaskStatusCompleted
+	err = taskRepo.Update(s.Context, task2)
+	s.NoError(err, "Failed to update task 2 status")
+
+	task3, err := taskRepo.Create(s.Context, s.TestPlan.ID, "Task 3", "Description 3", models.TaskPriorityMedium)
+	s.NoError(err, "Failed to create task 3")
+	task3.Status = models.TaskStatusInProgress
+	err = taskRepo.Update(s.Context, task3)
+	s.NoError(err, "Failed to update task 3 status")
+
+	// Tasks in the second plan
+	task4, err := taskRepo.Create(s.Context, secondPlan.ID, "Task 4", "Description 4", models.TaskPriorityMedium)
+	s.NoError(err, "Failed to create task 4")
+	task4.Status = models.TaskStatusInProgress
+	err = taskRepo.Update(s.Context, task4)
+	s.NoError(err, "Failed to update task 4 status")
+
+	task5, err := taskRepo.Create(s.Context, secondPlan.ID, "Task 5", "Description 5", models.TaskPriorityMedium)
+	s.NoError(err, "Failed to create task 5")
+	task5.Status = models.TaskStatusPending
+	err = taskRepo.Update(s.Context, task5)
+	s.NoError(err, "Failed to update task 5 status")
+
+	// Test filtering by plan and status
+	// Get in-progress tasks from the first plan
+	inProgressTasks, err := taskRepo.ListByPlanAndStatus(s.Context, s.TestPlan.ID, models.TaskStatusInProgress)
+	s.NoError(err, "Failed to list tasks by plan and status")
+	s.Equal(2, len(inProgressTasks), "Should find 2 in-progress tasks in the first plan")
+	s.Equal(task1.ID, inProgressTasks[0].ID, "First task should match")
+	s.Equal(task3.ID, inProgressTasks[1].ID, "Second task should match")
+
+	// Get completed tasks from the first plan
+	completedTasks, err := taskRepo.ListByPlanAndStatus(s.Context, s.TestPlan.ID, models.TaskStatusCompleted)
+	s.NoError(err, "Failed to list tasks by plan and status")
+	s.Equal(1, len(completedTasks), "Should find 1 completed task in the first plan")
+	s.Equal(task2.ID, completedTasks[0].ID, "Completed task should match")
+
+	// Get pending tasks from the first plan (should be empty)
+	pendingTasks, err := taskRepo.ListByPlanAndStatus(s.Context, s.TestPlan.ID, models.TaskStatusPending)
+	s.NoError(err, "Failed to list tasks by plan and status")
+	s.Equal(0, len(pendingTasks), "Should find 0 pending tasks in the first plan")
+
+	// Get in-progress tasks from the second plan
+	secondPlanInProgressTasks, err := taskRepo.ListByPlanAndStatus(s.Context, secondPlan.ID, models.TaskStatusInProgress)
+	s.NoError(err, "Failed to list tasks by plan and status")
+	s.Equal(1, len(secondPlanInProgressTasks), "Should find 1 in-progress task in the second plan")
+	s.Equal(task4.ID, secondPlanInProgressTasks[0].ID, "In-progress task in second plan should match")
+
+	// Get pending tasks from the second plan
+	secondPlanPendingTasks, err := taskRepo.ListByPlanAndStatus(s.Context, secondPlan.ID, models.TaskStatusPending)
+	s.NoError(err, "Failed to list tasks by plan and status")
+	s.Equal(1, len(secondPlanPendingTasks), "Should find 1 pending task in the second plan")
+	s.Equal(task5.ID, secondPlanPendingTasks[0].ID, "Pending task in second plan should match")
+
+	// Test with non-existent plan
+	nonExistentPlanTasks, err := taskRepo.ListByPlanAndStatus(s.Context, "non-existent-plan", models.TaskStatusInProgress)
+	s.Error(err, "Should error when listing tasks for non-existent plan")
+	s.Nil(nonExistentPlanTasks, "Should return nil tasks for non-existent plan")
+}
+
 // TestMCPBulkCreateTasks tests the MCP bulk_create_tasks tool
 func (s *TaskRepositorySuite) TestMCPBulkCreateTasks() {
 	// Create a test HTTP server
