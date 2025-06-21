@@ -1,16 +1,22 @@
 package integration
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/jbrinkman/valkey-ai-tasks/go/internal/models"
+	"github.com/jbrinkman/valkey-ai-tasks/go/internal/storage"
 	"github.com/jbrinkman/valkey-ai-tasks/go/tests/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
 // TaskRepositorySuite is a test suite for the TaskRepository
+// It includes both standard CRUD tests and edge case tests
 type TaskRepositorySuite struct {
 	utils.RepositoryTestSuite
 	TestPlan *models.Plan
@@ -285,6 +291,379 @@ func (s *TaskRepositorySuite) TestDeleteNonExistentTask() {
 	err := taskRepo.Delete(s.Context, nonExistentID)
 	s.Error(err, "Deleting non-existent task should return error")
 	s.Contains(err.Error(), "task not found", "Error should indicate task not found")
+}
+
+// TestCreateTaskWithEmptyTitle tests creating a task with an empty title
+func (s *TaskRepositorySuite) TestCreateTaskWithEmptyTitle() {
+	taskRepo := s.GetTaskRepository()
+
+	task, err := taskRepo.Create(s.Context, s.TestPlan.ID, "", "Task with empty title", models.TaskPriorityMedium)
+	s.NoError(err, "Should be able to create task with empty title")
+	s.Empty(task.Title, "Task title should be empty")
+}
+
+// TestCreateTaskWithEmptyDescription tests creating a task with an empty description
+func (s *TaskRepositorySuite) TestCreateTaskWithEmptyDescription() {
+	taskRepo := s.GetTaskRepository()
+
+	task, err := taskRepo.Create(s.Context, s.TestPlan.ID, "Task Title", "", models.TaskPriorityMedium)
+	s.NoError(err, "Should be able to create task with empty description")
+	s.Empty(task.Description, "Task description should be empty")
+}
+
+// TestCreateTaskWithNonExistentPlan tests creating a task with a non-existent plan
+func (s *TaskRepositorySuite) TestCreateTaskWithNonExistentPlan() {
+	taskRepo := s.GetTaskRepository()
+
+	nonExistentPlanID := uuid.New().String()
+	_, err := taskRepo.Create(s.Context, nonExistentPlanID, "Task Title", "Description", models.TaskPriorityMedium)
+	s.Error(err, "Creating task with non-existent plan should fail")
+	s.Contains(err.Error(), "plan not found", "Error should indicate plan not found")
+}
+
+// TestListTasksForNonExistentPlan tests listing tasks for a non-existent plan
+func (s *TaskRepositorySuite) TestListTasksForNonExistentPlan() {
+	taskRepo := s.GetTaskRepository()
+
+	nonExistentPlanID := uuid.New().String()
+	_, err := taskRepo.ListByPlan(s.Context, nonExistentPlanID)
+	s.Error(err, "Listing tasks for non-existent plan should fail")
+	s.Contains(err.Error(), "plan not found", "Error should indicate plan not found")
+}
+
+// TestReorderTaskWithInvalidOrder tests reordering a task with an invalid order
+func (s *TaskRepositorySuite) TestReorderTaskWithInvalidOrder() {
+	taskRepo := s.GetTaskRepository()
+
+	// Create a task
+	task, err := taskRepo.Create(s.Context, s.TestPlan.ID, "Task for reordering", "Description", models.TaskPriorityMedium)
+	s.NoError(err, "Failed to create task")
+
+	// Try to reorder with invalid negative order
+	err = taskRepo.ReorderTask(s.Context, task.ID, -1)
+	s.Error(err, "Reordering task with negative order should fail")
+	s.Contains(err.Error(), "invalid order", "Error should indicate invalid order")
+
+	// Try to reorder with too large order
+	err = taskRepo.ReorderTask(s.Context, task.ID, 100)
+	s.Error(err, "Reordering task with too large order should fail")
+	s.Contains(err.Error(), "invalid order", "Error should indicate invalid order")
+}
+
+// TestMoveTaskBetweenPlans tests moving a task between plans
+func (s *TaskRepositorySuite) TestMoveTaskBetweenPlans() {
+	taskRepo := s.GetTaskRepository()
+	planRepo := s.GetPlanRepository()
+
+	// Create a second plan
+	appID := "test-app-" + uuid.New().String()
+	secondPlan, err := planRepo.Create(s.Context, appID, "Second Plan", "Another plan")
+	s.NoError(err, "Failed to create second plan")
+
+	// Create a task in the first plan
+	task, err := taskRepo.Create(s.Context, s.TestPlan.ID, "Task to move", "This task will be moved", models.TaskPriorityMedium)
+	s.NoError(err, "Failed to create task")
+
+	// Verify task is in first plan
+	tasksInFirstPlan, err := taskRepo.ListByPlan(s.Context, s.TestPlan.ID)
+	s.NoError(err, "Failed to list tasks in first plan")
+	s.Equal(1, len(tasksInFirstPlan), "First plan should have 1 task")
+
+	// Move task to second plan
+	taskToMove, err := taskRepo.Get(s.Context, task.ID)
+	s.NoError(err, "Failed to get task")
+
+	taskToMove.PlanID = secondPlan.ID
+	err = taskRepo.Update(s.Context, taskToMove)
+	s.NoError(err, "Failed to update task's plan")
+
+	// Verify task is now in second plan
+	tasksInFirstPlanAfterMove, err := taskRepo.ListByPlan(s.Context, s.TestPlan.ID)
+	s.NoError(err, "Failed to list tasks in first plan after move")
+	s.Equal(0, len(tasksInFirstPlanAfterMove), "First plan should have 0 tasks after move")
+
+	tasksInSecondPlan, err := taskRepo.ListByPlan(s.Context, secondPlan.ID)
+	s.NoError(err, "Failed to list tasks in second plan")
+	s.Equal(1, len(tasksInSecondPlan), "Second plan should have 1 task")
+	s.Equal(task.ID, tasksInSecondPlan[0].ID, "Task in second plan should match moved task")
+}
+
+// TestCreateTaskWithSpecialCharacters tests creating a task with special characters
+func (s *TaskRepositorySuite) TestCreateTaskWithSpecialCharacters() {
+	taskRepo := s.GetTaskRepository()
+
+	specialTitle := "Special!@#$%^&*()_+{}[]|\\:;\"'<>,.?/~` Task"
+	specialDesc := "Description with emoji 😀 and unicode characters: ñáéíóú"
+
+	task, err := taskRepo.Create(s.Context, s.TestPlan.ID, specialTitle, specialDesc, models.TaskPriorityMedium)
+	s.NoError(err, "Should be able to create task with special characters")
+
+	// Retrieve the task to verify special characters are preserved
+	retrievedTask, err := taskRepo.Get(s.Context, task.ID)
+	s.NoError(err, "Failed to get task with special characters")
+	s.Equal(specialTitle, retrievedTask.Title, "Special characters in title should be preserved")
+	s.Equal(specialDesc, retrievedTask.Description, "Special characters in description should be preserved")
+}
+
+// TestBulkTaskOperations tests bulk operations on tasks
+func (s *TaskRepositorySuite) TestBulkTaskOperations() {
+	taskRepo := s.GetTaskRepository()
+
+	// Create multiple tasks
+	taskInputs := []struct {
+		title       string
+		description string
+		priority    models.TaskPriority
+	}{
+		{"Task 1", "Description 1", models.TaskPriorityHigh},
+		{"Task 2", "Description 2", models.TaskPriorityMedium},
+		{"Task 3", "Description 3", models.TaskPriorityLow},
+	}
+
+	var tasks []*models.Task
+	for _, input := range taskInputs {
+		task, err := taskRepo.Create(s.Context, s.TestPlan.ID, input.title, input.description, input.priority)
+		s.NoError(err, "Failed to create task")
+		tasks = append(tasks, task)
+	}
+
+	// Update all tasks to completed status
+	for _, task := range tasks {
+		task.Status = models.TaskStatusCompleted
+		err := taskRepo.Update(s.Context, task)
+		s.NoError(err, "Failed to update task status")
+	}
+
+	// List completed tasks
+	completedTasks, err := taskRepo.ListByStatus(s.Context, models.TaskStatusCompleted)
+	s.NoError(err, "Failed to list completed tasks")
+
+	// Verify our tasks are in the completed list
+	taskIDs := make(map[string]bool)
+	for _, task := range tasks {
+		taskIDs[task.ID] = false
+	}
+
+	for _, task := range completedTasks {
+		if _, exists := taskIDs[task.ID]; exists {
+			taskIDs[task.ID] = true
+		}
+	}
+
+	for id, found := range taskIDs {
+		s.True(found, "Task %s should be in completed tasks list", id)
+	}
+
+	// Delete all tasks
+	for _, task := range tasks {
+		err := taskRepo.Delete(s.Context, task.ID)
+		s.NoError(err, "Failed to delete task")
+	}
+
+	// Verify plan has no tasks
+	remainingTasks, err := taskRepo.ListByPlan(s.Context, s.TestPlan.ID)
+	s.NoError(err, "Failed to list remaining tasks")
+	s.Empty(remainingTasks, "Plan should have no tasks after deletion")
+}
+
+// TestCreateBulkTasks tests the bulk task creation functionality
+func (s *TaskRepositorySuite) TestCreateBulkTasks() {
+	taskRepo := s.GetTaskRepository()
+
+	// Prepare task inputs for bulk creation
+	taskInputs := []storage.TaskCreateInput{
+		{
+			Title:       "Task 1",
+			Description: "Description for task 1",
+			Priority:    models.TaskPriorityHigh,
+		},
+		{
+			Title:       "Task 2",
+			Description: "Description for task 2",
+			Status:      models.TaskStatusInProgress,
+		},
+		{
+			Title: "Task 3",
+		},
+	}
+
+	// Create tasks in bulk
+	createdTasks, err := taskRepo.CreateBulk(s.Context, s.TestPlan.ID, taskInputs)
+	s.NoError(err, "Failed to create tasks in bulk")
+	s.NotNil(createdTasks, "Created tasks should not be nil")
+	s.Equal(3, len(createdTasks), "Should have created 3 tasks")
+
+	// Verify task 1
+	s.Equal("Task 1", createdTasks[0].Title)
+	s.Equal("Description for task 1", createdTasks[0].Description)
+	s.Equal(models.TaskPriorityHigh, createdTasks[0].Priority)
+	s.Equal(models.TaskStatusPending, createdTasks[0].Status) // Default status
+	s.Equal(0, createdTasks[0].Order)
+
+	// Verify task 2
+	s.Equal("Task 2", createdTasks[1].Title)
+	s.Equal("Description for task 2", createdTasks[1].Description)
+	s.Equal(models.TaskPriorityMedium, createdTasks[1].Priority) // Default priority
+	s.Equal(models.TaskStatusInProgress, createdTasks[1].Status)
+	s.Equal(1, createdTasks[1].Order)
+
+	// Verify task 3
+	s.Equal("Task 3", createdTasks[2].Title)
+	s.Equal("no description provided", createdTasks[2].Description) // Default description
+	s.Equal(models.TaskPriorityMedium, createdTasks[2].Priority)    // Default priority
+	s.Equal(models.TaskStatusPending, createdTasks[2].Status)       // Default status
+	s.Equal(2, createdTasks[2].Order)
+
+	// Verify tasks are stored in Valkey
+	tasks, err := taskRepo.ListByPlan(s.Context, s.TestPlan.ID)
+	s.NoError(err, "Failed to list tasks by plan")
+	s.Equal(3, len(tasks), "Should have 3 tasks in the plan")
+}
+
+// TestMCPBulkCreateTasks tests the MCP bulk_create_tasks tool
+func (s *TaskRepositorySuite) TestMCPBulkCreateTasks() {
+	// Create a test HTTP server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Only handle POST requests to /call-tool/bulk_create_tasks
+		if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/call-tool/bulk_create_tasks") {
+			// Parse the request body
+			var requestBody struct {
+				PlanID    string `json:"plan_id"`
+				TasksJSON string `json:"tasks_json"`
+			}
+			err := json.NewDecoder(r.Body).Decode(&requestBody)
+			if err != nil {
+				http.Error(w, "Invalid request body", http.StatusBadRequest)
+				return
+			}
+
+			// Validate required fields
+			if requestBody.PlanID == "" || requestBody.TasksJSON == "" {
+				http.Error(w, "Missing required fields", http.StatusBadRequest)
+				return
+			}
+
+			// Parse the tasks JSON
+			var taskInputs []map[string]interface{}
+			err = json.Unmarshal([]byte(requestBody.TasksJSON), &taskInputs)
+			if err != nil {
+				http.Error(w, "Invalid tasks JSON", http.StatusBadRequest)
+				return
+			}
+
+			// Convert to TaskCreateInput
+			var inputs []storage.TaskCreateInput
+			for _, task := range taskInputs {
+				input := storage.TaskCreateInput{
+					Title:       task["title"].(string),
+					Description: "",
+					Status:      models.TaskStatusPending,
+					Priority:    models.TaskPriorityMedium,
+				}
+
+				if desc, ok := task["description"].(string); ok {
+					input.Description = desc
+				}
+
+				if status, ok := task["status"].(string); ok {
+					input.Status = models.TaskStatus(status)
+				}
+
+				if priority, ok := task["priority"].(string); ok {
+					input.Priority = models.TaskPriority(priority)
+				}
+
+				inputs = append(inputs, input)
+			}
+
+			// Create tasks in bulk
+			taskRepo := s.GetTaskRepository()
+			createdTasks, err := taskRepo.CreateBulk(s.Context, requestBody.PlanID, inputs)
+			if err != nil {
+				http.Error(w, "Failed to create tasks: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			// Return the created tasks
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(createdTasks)
+		} else {
+			http.Error(w, "Not found", http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	// Create a test HTTP client
+	client := server.Client()
+
+	// Prepare the request body
+	taskInputs := []map[string]interface{}{
+		{
+			"title":       "Task 1",
+			"description": "Description for task 1",
+			"priority":    "high",
+		},
+		{
+			"title":       "Task 2",
+			"description": "Description for task 2",
+			"status":      "in_progress",
+		},
+		{
+			"title": "Task 3",
+		},
+	}
+	taskInputsJSON, err := json.Marshal(taskInputs)
+	s.Require().NoError(err, "Failed to marshal task inputs")
+
+	requestBody := map[string]string{
+		"plan_id":    s.TestPlan.ID,
+		"tasks_json": string(taskInputsJSON),
+	}
+	requestBodyJSON, err := json.Marshal(requestBody)
+	s.Require().NoError(err, "Failed to marshal request body")
+
+	// Send the request
+	resp, err := client.Post(server.URL+"/call-tool/bulk_create_tasks", "application/json", strings.NewReader(string(requestBodyJSON)))
+	s.Require().NoError(err, "Failed to send request")
+	defer resp.Body.Close()
+
+	// Check the response status code
+	s.Equal(http.StatusOK, resp.StatusCode, "Expected status code 200")
+
+	// Parse the response body
+	var createdTasks []models.Task
+	err = json.NewDecoder(resp.Body).Decode(&createdTasks)
+	s.Require().NoError(err, "Failed to parse response body")
+
+	// Verify the created tasks
+	s.Equal(3, len(createdTasks), "Should have created 3 tasks")
+
+	// Verify task 1
+	s.Equal("Task 1", createdTasks[0].Title)
+	s.Equal("Description for task 1", createdTasks[0].Description)
+	s.Equal(models.TaskPriorityHigh, createdTasks[0].Priority)
+	s.Equal(models.TaskStatusPending, createdTasks[0].Status) // Default status
+	s.Equal(0, createdTasks[0].Order)
+
+	// Verify task 2
+	s.Equal("Task 2", createdTasks[1].Title)
+	s.Equal("Description for task 2", createdTasks[1].Description)
+	s.Equal(models.TaskPriorityMedium, createdTasks[1].Priority) // Default priority
+	s.Equal(models.TaskStatusInProgress, createdTasks[1].Status)
+	s.Equal(1, createdTasks[1].Order)
+
+	// Verify task 3
+	s.Equal("Task 3", createdTasks[2].Title)
+	s.Equal("no description provided", createdTasks[2].Description) // Default description
+	s.Equal(models.TaskPriorityMedium, createdTasks[2].Priority)    // Default priority
+	s.Equal(models.TaskStatusPending, createdTasks[2].Status)       // Default status
+	s.Equal(2, createdTasks[2].Order)
+
+	// Verify tasks are stored in Valkey
+	taskRepo := s.GetTaskRepository()
+	tasks, err := taskRepo.ListByPlan(s.Context, s.TestPlan.ID)
+	s.Require().NoError(err, "Failed to list tasks by plan")
+	s.Equal(3, len(tasks), "Should have 3 tasks in the plan")
 }
 
 // TestTaskRepositorySuite runs the task repository test suite
