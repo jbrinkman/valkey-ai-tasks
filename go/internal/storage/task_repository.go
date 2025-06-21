@@ -296,19 +296,70 @@ func (r *TaskRepository) ReorderTask(ctx context.Context, taskID string, newOrde
 		return nil
 	}
 
-	// Update the task's order
-	task.Order = newOrder
-	task.UpdatedAt = time.Now()
+	// Create a new slice of tasks with the reordered task at the new position
+	var reorderedTasks []*models.Task
+	oldOrder := task.Order
 
-	// Store the updated task
-	taskKey := GetTaskKey(task.ID)
-	_, err = r.client.client.HSet(ctx, taskKey, task.ToMap())
-	if err != nil {
-		return fmt.Errorf("failed to update task order: %w", err)
+	// Handle moving a task to a later position
+	if newOrder > oldOrder {
+		// Add tasks before the old position
+		for i := 0; i < oldOrder; i++ {
+			reorderedTasks = append(reorderedTasks, tasks[i])
+		}
+		
+		// Add tasks between old position and new position
+		for i := oldOrder + 1; i <= newOrder; i++ {
+			reorderedTasks = append(reorderedTasks, tasks[i])
+		}
+		
+		// Add the task being moved
+		reorderedTasks = append(reorderedTasks, task)
+		
+		// Add remaining tasks
+		for i := newOrder + 1; i < len(tasks); i++ {
+			reorderedTasks = append(reorderedTasks, tasks[i])
+		}
+	} else { // Handle moving a task to an earlier position
+		// Add tasks before the new position
+		for i := 0; i < newOrder; i++ {
+			reorderedTasks = append(reorderedTasks, tasks[i])
+		}
+		
+		// Add the task being moved
+		reorderedTasks = append(reorderedTasks, task)
+		
+		// Add tasks between new position and old position
+		for i := newOrder; i < oldOrder; i++ {
+			reorderedTasks = append(reorderedTasks, tasks[i])
+		}
+		
+		// Add remaining tasks
+		for i := oldOrder + 1; i < len(tasks); i++ {
+			reorderedTasks = append(reorderedTasks, tasks[i])
+		}
 	}
 
-	// Reorder all tasks in the plan to ensure they are sequential
-	return r.reorderPlanTasks(ctx, task.PlanID)
+	// Update the orders of all tasks based on their new positions
+	for i, t := range reorderedTasks {
+		t.Order = i
+		t.UpdatedAt = time.Now()
+		
+		// Store the updated task
+		taskKey := GetTaskKey(t.ID)
+		_, err = r.client.client.HSet(ctx, taskKey, t.ToMap())
+		if err != nil {
+			return fmt.Errorf("failed to update task order: %w", err)
+		}
+		
+		// Update the task's score in the sorted set
+		planTasksKey := GetPlanTasksKey(task.PlanID)
+		_, err = r.client.client.ZAdd(ctx, planTasksKey, map[string]float64{t.ID: float64(t.Order)})
+		if err != nil {
+			return fmt.Errorf("failed to update task order in plan: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // CreateBulk adds multiple tasks to a plan in a single operation
@@ -411,8 +462,8 @@ func (r *TaskRepository) reorderPlanTasks(ctx context.Context, planID string) er
 	// Update the order of each task
 	planTasksKey := GetPlanTasksKey(planID)
 	for i, task := range tasks {
-		// Update the task's order
-		task.Order = i + 1
+		// Update the task's order to match its position in the list (0-based)
+		task.Order = i
 		task.UpdatedAt = time.Now()
 
 		// Update the task in storage
