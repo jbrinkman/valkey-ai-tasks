@@ -16,7 +16,7 @@ services:
 
   mcpserver:
     build:
-      context: ./go
+      context: .
       dockerfile: Dockerfile
     ports:
       - "8080:8080"

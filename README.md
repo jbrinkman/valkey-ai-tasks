@@ -24,16 +24,20 @@ The system is built using:
 
 ```
 valkey-ai-tasks/
-├── go/                    # Go implementation
-│   ├── cmd/               # Command-line applications
-│   │   └── mcpserver/     # MCP server entry point
-│   ├── internal/          # Internal packages
-│   │   ├── models/        # Data models
-│   │   ├── mcp/           # MCP server implementation
-│   │   └── storage/       # Valkey storage layer
-│   └── Dockerfile         # Docker build file for Go implementation
-├── docker-compose.yml     # Docker Compose configuration
-└── README.md              # This file
+├── cmd/                  # Command-line applications
+│   └── mcpserver/        # MCP server entry point
+├── internal/             # Internal packages
+│   ├── models/           # Data models
+│   ├── mcp/              # MCP server implementation
+│   ├── mocks/            # Mock implementations for testing
+│   └── storage/          # Valkey storage layer
+├── tests/                # Test files
+│   ├── integration/      # Integration tests
+│   └── utils/            # Test utilities
+├── Dockerfile            # Docker build file
+├── docker-compose.yml    # Docker Compose configuration
+├── go.mod                # Go module definition
+└── README.md             # This file
 ```
 
 ## Getting Started
@@ -57,52 +61,47 @@ valkey-ai-tasks/
 
 2. Install dependencies:
    ```bash
-   cd go
    go mod download
    ```
 
 3. Run the MCP server:
    ```bash
+   make run
+   # or directly with:
    go run cmd/mcpserver/main.go
    ```
 
 ### Running Tests
 
-The project includes a Makefile in the `go` directory with targets for running tests:
+The project includes a Makefile with targets for running tests:
 
 1. Run all tests:
    ```bash
-   cd go
    make test
    ```
 
 2. Run integration tests only:
    ```bash
-   cd go
    make integ-test
    ```
 
 3. Run tests with a filter:
    ```bash
-   cd go
    make test filter=TestName
    ```
 
 4. Run tests with verbose output:
    ```bash
-   cd go
    make test verbose=1
    ```
 
 5. Generate test coverage report:
    ```bash
-   cd go
    make coverage
    ```
 
 6. View all available Makefile targets:
    ```bash
-   cd go
    make help
    ```
 
