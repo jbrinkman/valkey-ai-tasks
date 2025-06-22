@@ -50,8 +50,15 @@ func (s *RepositoryTestSuite) SetupTest() {
 	// Add container to list for cleanup
 	s.Containers = append(s.Containers, container)
 
-	// Create Valkey client
-	valkeyClient, err := storage.NewValkeyClient("localhost", 6379, "", "")
+	// Create Valkey client using the container's endpoint
+	endpoint, err := container.Container.Endpoint(s.Context, "")
+	require.NoError(s.T(), err, "Failed to get container endpoint")
+	
+	// Parse the endpoint to get host and port
+	host, port, err := ParseEndpoint(endpoint)
+	require.NoError(s.T(), err, "Failed to parse container endpoint")
+	
+	valkeyClient, err := storage.NewValkeyClient(host, port, "", "")
 	require.NoError(s.T(), err, "Failed to create Valkey client")
 	s.ValkeyClient = valkeyClient
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"testing"
 
 	"github.com/jbrinkman/valkey-ai-tasks/go/internal/mocks"
@@ -26,11 +27,28 @@ func (m *mockToolRegistry) AddTool(tool mcp.Tool, handler func(ctx context.Conte
 	}
 }
 
+// getRandomPort returns a random available port for testing
+func getRandomPort() (int, error) {
+	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	if err != nil {
+		return 0, err
+	}
+
+	l, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		return 0, err
+	}
+	defer l.Close()
+
+	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
 // testMCPGoServer is a test-specific version of MCPGoServer that uses interfaces instead of concrete types
 type testMCPGoServer struct {
 	server   *mockToolRegistry
 	planRepo storage.PlanRepositoryInterface
 	taskRepo storage.TaskRepositoryInterface
+	port     int // Added port field for test server
 }
 
 // registerListTasksByPlanAndStatusTool implements the same method as MCPGoServer for testing
