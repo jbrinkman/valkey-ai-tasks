@@ -10,6 +10,7 @@ type Project struct {
 	ApplicationID string    `json:"application_id"` // Added field for application association
 	Name          string    `json:"name"`
 	Description   string    `json:"description"`
+	Notes         string    `json:"notes"` // Added field for storing markdown notes
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }
@@ -22,6 +23,7 @@ func NewProject(id, applicationID, name, description string) *Project {
 		ApplicationID: applicationID,
 		Name:          name,
 		Description:   description,
+		Notes:         "", // Initialize with empty notes
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
@@ -34,6 +36,7 @@ func (p *Project) ToMap() map[string]string {
 		"application_id": p.ApplicationID,
 		"name":           p.Name,
 		"description":    p.Description,
+		"notes":          p.Notes,
 		"created_at":     p.CreatedAt.Format(time.RFC3339),
 		"updated_at":     p.UpdatedAt.Format(time.RFC3339),
 	}
@@ -45,6 +48,7 @@ func (p *Project) FromMap(data map[string]string) error {
 	p.ApplicationID = data["application_id"]
 	p.Name = data["name"]
 	p.Description = data["description"]
+	p.Notes = data["notes"] // Add notes field
 
 	createdAt, err := time.Parse(time.RFC3339, data["created_at"])
 	if err != nil {
