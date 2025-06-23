@@ -337,5 +337,33 @@ func (r *MockTaskRepository) ListOrphanedTasks(ctx context.Context) ([]*models.T
 	return orphanedTasks, nil
 }
 
+// UpdateNotes updates the notes for a task in the mock storage
+func (r *MockTaskRepository) UpdateNotes(ctx context.Context, id string, notes string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	task, exists := r.tasks[id]
+	if !exists {
+		return fmt.Errorf("task not found: %s", id)
+	}
+
+	task.Notes = notes
+	task.UpdatedAt = time.Now()
+	return nil
+}
+
+// GetNotes retrieves the notes for a task from the mock storage
+func (r *MockTaskRepository) GetNotes(ctx context.Context, id string) (string, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	task, exists := r.tasks[id]
+	if !exists {
+		return "", fmt.Errorf("task not found: %s", id)
+	}
+
+	return task.Notes, nil
+}
+
 // Ensure MockTaskRepository implements the TaskRepositoryInterface
 var _ storage.TaskRepositoryInterface = (*MockTaskRepository)(nil)

@@ -110,15 +110,44 @@ func (r *MockPlanRepository) ListByStatus(ctx context.Context, status models.Pla
 	plans := make([]*models.Plan, 0)
 	for _, plan := range r.plans {
 		// For plans without a status field, treat them as "new" for filtering
-		if plan.Status == "" {
+		switch plan.Status {
+		case "":
 			if status == models.PlanStatusNew {
 				plans = append(plans, plan)
 			}
-		} else if plan.Status == status {
+		case status:
 			plans = append(plans, plan)
 		}
 	}
 	return plans, nil
+}
+
+// UpdateNotes updates the notes for a plan in the mock storage
+func (r *MockPlanRepository) UpdateNotes(ctx context.Context, id string, notes string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	plan, exists := r.plans[id]
+	if !exists {
+		return fmt.Errorf("plan not found: %s", id)
+	}
+
+	plan.Notes = notes
+	plan.UpdatedAt = time.Now()
+	return nil
+}
+
+// GetNotes retrieves the notes for a plan from the mock storage
+func (r *MockPlanRepository) GetNotes(ctx context.Context, id string) (string, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	plan, exists := r.plans[id]
+	if !exists {
+		return "", fmt.Errorf("plan not found: %s", id)
+	}
+
+	return plan.Notes, nil
 }
 
 // Ensure MockPlanRepository implements the PlanRepositoryInterface

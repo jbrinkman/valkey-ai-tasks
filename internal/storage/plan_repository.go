@@ -241,3 +241,37 @@ func (r *PlanRepository) ListByApplication(ctx context.Context, applicationID st
 
 	return plans, nil
 }
+
+// UpdateNotes updates the notes for a plan
+func (r *PlanRepository) UpdateNotes(ctx context.Context, id string, notes string) error {
+	// Get the plan first to verify it exists
+	plan, err := r.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Update the notes
+	plan.Notes = notes
+	// Update the updated_at timestamp
+	plan.UpdatedAt = time.Now()
+
+	// Store the updated plan in Valkey
+	planKey := GetPlanKey(plan.ID)
+	_, err = r.client.client.HSet(ctx, planKey, plan.ToMap())
+	if err != nil {
+		return fmt.Errorf("failed to update plan notes: %w", err)
+	}
+
+	return nil
+}
+
+// GetNotes retrieves the notes for a plan
+func (r *PlanRepository) GetNotes(ctx context.Context, id string) (string, error) {
+	// Get the plan
+	plan, err := r.Get(ctx, id)
+	if err != nil {
+		return "", err
+	}
+
+	return plan.Notes, nil
+}

@@ -15,17 +15,12 @@ type PlanRepositoryInterface interface {
 	List(ctx context.Context) ([]*models.Plan, error)
 	ListByApplication(ctx context.Context, applicationID string) ([]*models.Plan, error)
 	ListByStatus(ctx context.Context, status models.PlanStatus) ([]*models.Plan, error)
+	// Notes related methods
+	UpdateNotes(ctx context.Context, id string, notes string) error
+	GetNotes(ctx context.Context, id string) (string, error)
 }
 
-// ProjectRepositoryInterface defines the legacy interface for project storage operations
-type ProjectRepositoryInterface interface {
-	Create(ctx context.Context, applicationID, name, description string) (*models.Project, error)
-	Get(ctx context.Context, id string) (*models.Project, error)
-	Update(ctx context.Context, project *models.Project) error
-	Delete(ctx context.Context, id string) error
-	List(ctx context.Context) ([]*models.Project, error)
-	ListByApplication(ctx context.Context, applicationID string) ([]*models.Project, error)
-}
+// Note: ProjectRepositoryInterface has been removed as it's no longer needed
 
 // TaskRepositoryInterface defines the interface for task storage operations
 type TaskRepositoryInterface interface {
@@ -39,6 +34,9 @@ type TaskRepositoryInterface interface {
 	ListByPlanAndStatus(ctx context.Context, planID string, status models.TaskStatus) ([]*models.Task, error)
 	ReorderTask(ctx context.Context, taskID string, newOrder int) error
 	ListOrphanedTasks(ctx context.Context) ([]*models.Task, error)
+	// Notes related methods
+	UpdateNotes(ctx context.Context, id string, notes string) error
+	GetNotes(ctx context.Context, id string) (string, error)
 }
 
 // Ensure the concrete types implement the interfaces
