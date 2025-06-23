@@ -19,8 +19,6 @@ import (
 )
 
 const (
-	// ValkeyDefaultPort is the default port for Valkey
-	ValkeyDefaultPort = "6379/tcp"
 	// ValkeyImage is the Docker image for Valkey
 	ValkeyImage = "valkey/valkey:latest"
 	// ValkeyStartupTimeout is the timeout for Valkey container startup
