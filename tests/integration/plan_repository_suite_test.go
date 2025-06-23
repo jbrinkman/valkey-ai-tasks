@@ -357,6 +357,69 @@ func (s *PlanRepositorySuite) TestUpdateNonExistentPlan() {
 	s.Equal(nonExistentPlan.Name, retrievedPlan.Name, "Plan name should match")
 }
 
+// TestUpdatePlanNotes tests updating notes for a plan
+func (s *PlanRepositorySuite) TestUpdatePlanNotes() {
+	planRepo := s.GetPlanRepository()
+
+	// Create a plan
+	appID := "test-app-" + uuid.New().String()
+	plan, err := planRepo.Create(s.Context, appID, "Test Plan", "Test plan description")
+	s.NoError(err, "Failed to create plan")
+
+	// Initially notes should be empty
+	s.Empty(plan.Notes, "Plan notes should be empty initially")
+
+	// Update notes
+	markdownNotes := "# Test Notes\n\nThis is a **test** note with _markdown_ formatting."
+	err = planRepo.UpdateNotes(s.Context, plan.ID, markdownNotes)
+	s.NoError(err, "Failed to update plan notes")
+
+	// Verify notes were updated
+	updatedNotes, err := planRepo.GetNotes(s.Context, plan.ID)
+	s.NoError(err, "Failed to get plan notes")
+	s.Equal(markdownNotes, updatedNotes, "Plan notes should match what was set")
+
+	// Verify the plan itself has the updated notes when retrieved
+	updatedPlan, err := planRepo.Get(s.Context, plan.ID)
+	s.NoError(err, "Failed to get plan")
+	s.Equal(markdownNotes, updatedPlan.Notes, "Plan notes should be updated in the plan object")
+}
+
+// TestGetPlanNotes tests retrieving notes for a plan
+func (s *PlanRepositorySuite) TestGetPlanNotes() {
+	planRepo := s.GetPlanRepository()
+
+	// Create a plan with initial notes
+	appID := "test-app-" + uuid.New().String()
+	plan, err := planRepo.Create(s.Context, appID, "Test Plan", "Test plan description")
+	s.NoError(err, "Failed to create plan")
+
+	// Set notes directly during creation (if supported) or update after creation
+	markdownNotes := "# Plan Notes\n\n- Item 1\n- Item 2\n\n```go\nfunc example() {\n\tfmt.Println(\"Hello\")\n}\n```"
+	err = planRepo.UpdateNotes(s.Context, plan.ID, markdownNotes)
+	s.NoError(err, "Failed to update plan notes")
+
+	// Get notes
+	notes, err := planRepo.GetNotes(s.Context, plan.ID)
+	s.NoError(err, "Failed to get plan notes")
+	s.Equal(markdownNotes, notes, "Retrieved notes should match what was set")
+
+	// Test getting notes for non-existent plan
+	_, err = planRepo.GetNotes(s.Context, "non-existent-plan-id")
+	s.Error(err, "Getting notes for non-existent plan should fail")
+	s.Contains(err.Error(), "not found", "Error should indicate plan not found")
+}
+
+// TestUpdateNonExistentPlanNotes tests updating notes for a non-existent plan
+func (s *PlanRepositorySuite) TestUpdateNonExistentPlanNotes() {
+	planRepo := s.GetPlanRepository()
+
+	// Try to update notes for a non-existent plan
+	err := planRepo.UpdateNotes(s.Context, "non-existent-plan-id", "Some notes")
+	s.Error(err, "Updating notes for non-existent plan should fail")
+	s.Contains(err.Error(), "not found", "Error should indicate plan not found")
+}
+
 // TestPlanRepositorySuite runs the plan repository test suite
 func TestPlanRepositorySuite(t *testing.T) {
 	if testing.Short() {
