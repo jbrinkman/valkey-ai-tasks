@@ -6,12 +6,13 @@ import (
 	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/jbrinkman/valkey-ai-tasks/internal/utils/markdown"
 )
 
 // registerUpdatePlanNotesTool registers a tool to update notes for a plan
 func (s *MCPGoServer) registerUpdatePlanNotesTool() {
 	tool := mcp.NewTool("update_plan_notes",
-		mcp.WithDescription("Update the notes for a specific plan"),
+		mcp.WithDescription("Update notes for a plan"),
 		mcp.WithString("id",
 			mcp.Required(),
 			mcp.Description("Plan ID"),
@@ -33,23 +34,23 @@ func (s *MCPGoServer) registerUpdatePlanNotesTool() {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		// Validate and format the markdown content
+		err = markdown.Validate(notes)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Invalid notes format: %v", err)), nil
+		}
+
+		// Sanitize and format the notes
+		notes = markdown.Sanitize(notes)
+		notes = markdown.Format(notes)
+
 		// Update the notes
 		err = s.planRepo.UpdateNotes(ctx, id, notes)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to update plan notes: %v", err)), nil
 		}
 
-		// Get the updated plan
-		plan, err := s.planRepo.Get(ctx, id)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to get updated plan: %v", err)), nil
-		}
-
-		planJson, err := json.Marshal(plan)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal plan: %v", err)), nil
-		}
-		return mcp.NewToolResultText(string(planJson)), nil
+		return mcp.NewToolResultText(fmt.Sprintf("Successfully updated notes for plan %s", id)), nil
 	})
 }
 
@@ -112,6 +113,16 @@ func (s *MCPGoServer) registerUpdateTaskNotesTool() {
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
+
+		// Validate and format the markdown content
+		err = markdown.Validate(notes)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Invalid notes format: %v", err)), nil
+		}
+
+		// Sanitize and format the notes
+		notes = markdown.Sanitize(notes)
+		notes = markdown.Format(notes)
 
 		// Update the notes
 		err = s.taskRepo.UpdateNotes(ctx, id, notes)

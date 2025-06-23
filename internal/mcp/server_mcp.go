@@ -7,10 +7,12 @@ import (
 	"log"
 	"time"
 
-	"github.com/jbrinkman/valkey-ai-tasks/internal/models"
-	"github.com/jbrinkman/valkey-ai-tasks/internal/storage"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+
+	"github.com/jbrinkman/valkey-ai-tasks/internal/models"
+	"github.com/jbrinkman/valkey-ai-tasks/internal/storage"
+	"github.com/jbrinkman/valkey-ai-tasks/internal/utils/markdown"
 )
 
 // MCPGoServer wraps the mark3labs/mcp-go server implementation
@@ -64,7 +66,7 @@ func (s *MCPGoServer) registerTools() {
 	s.registerDeletePlanTool()
 	s.registerUpdatePlanStatusTool()
 	s.registerListPlansByStatusTool()
-	
+
 	// Plan notes tools
 	s.registerUpdatePlanNotesTool()
 	s.registerGetPlanNotesTool()
@@ -80,7 +82,7 @@ func (s *MCPGoServer) registerTools() {
 	s.registerBulkCreateTasksTool()
 	s.registerReorderTaskTool()
 	s.registerListOrphanedTasksTool()
-	
+
 	// Task notes tools
 	s.registerUpdateTaskNotesTool()
 	s.registerGetTaskNotesTool()
@@ -128,13 +130,22 @@ func (s *MCPGoServer) registerCreatePlanTool() {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to create plan: %v", err)), nil
 		}
 
-		// If notes were provided, update them
+		// If notes were provided, validate, format and update them
 		if notes != "" {
+			// Import markdown utilities
+			if err := markdown.Validate(notes); err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Invalid notes format: %v", err)), nil
+			}
+			
+			// Sanitize and format the notes
+			notes = markdown.Sanitize(notes)
+			notes = markdown.Format(notes)
+			
 			err = s.planRepo.UpdateNotes(ctx, plan.ID, notes)
 			if err != nil {
 				return mcp.NewToolResultError(fmt.Sprintf("Failed to set initial notes: %v", err)), nil
 			}
-			
+
 			// Refresh plan to include notes
 			plan, err = s.planRepo.Get(ctx, plan.ID)
 			if err != nil {
@@ -330,10 +341,20 @@ func (s *MCPGoServer) registerUpdatePlanTool() {
 		if description != plan.Description {
 			plan.Description = description
 		}
-		
+
 		// Check if notes are provided
 		notes := request.GetString("notes", "")
 		if notes != "" {
+			// Validate and format the markdown content
+			err = markdown.Validate(notes)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Invalid notes format: %v", err)), nil
+			}
+
+			// Sanitize and format the notes
+			notes = markdown.Sanitize(notes)
+			notes = markdown.Format(notes)
+
 			// Update notes separately using the dedicated method
 			err = s.planRepo.UpdateNotes(ctx, id, notes)
 			if err != nil {
@@ -467,13 +488,23 @@ func (s *MCPGoServer) registerCreateTaskTool() {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to create task: %v", err)), nil
 		}
 
-		// If notes were provided, update them
+		// If notes were provided, validate, format and update them
 		if notes != "" {
+			// Validate and format the markdown content
+			err = markdown.Validate(notes)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Invalid notes format: %v", err)), nil
+			}
+
+			// Sanitize and format the notes
+			notes = markdown.Sanitize(notes)
+			notes = markdown.Format(notes)
+			
 			err = s.taskRepo.UpdateNotes(ctx, task.ID, notes)
 			if err != nil {
 				return mcp.NewToolResultError(fmt.Sprintf("Failed to set initial notes: %v", err)), nil
 			}
-			
+
 			// Refresh task to include notes
 			task, err = s.taskRepo.Get(ctx, task.ID)
 			if err != nil {
@@ -634,6 +665,16 @@ func (s *MCPGoServer) registerUpdateTaskTool() {
 		// Check if notes are provided
 		notes := request.GetString("notes", "")
 		if notes != "" {
+			// Validate and format the markdown content
+			err = markdown.Validate(notes)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Invalid notes format: %v", err)), nil
+			}
+
+			// Sanitize and format the notes
+			notes = markdown.Sanitize(notes)
+			notes = markdown.Format(notes)
+
 			// Update notes separately using the dedicated method
 			err = s.taskRepo.UpdateNotes(ctx, id, notes)
 			if err != nil {
