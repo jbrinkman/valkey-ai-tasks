@@ -27,11 +27,14 @@ The system is built using:
 valkey-ai-tasks/
 ├── cmd/                  # Command-line applications
 │   └── mcpserver/        # MCP server entry point
+├── examples/             # Example files and templates
+│   └── agent_prompts.md  # Example agent prompts for using notes
 ├── internal/             # Internal packages
 │   ├── models/           # Data models
 │   ├── mcp/              # MCP server implementation
-│   ├── mocks/            # Mock implementations for testing
-│   └── storage/          # Valkey storage layer
+│   ├── storage/          # Valkey storage layer
+│   └── utils/            # Utility functions
+│       └── markdown/     # Markdown processing utilities
 ├── tests/                # Test files
 │   ├── integration/      # Integration tests
 │   └── utils/            # Test utilities
