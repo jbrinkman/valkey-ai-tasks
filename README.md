@@ -8,6 +8,7 @@ A task management system that implements the Model Context Protocol (MCP) for se
 - Task management (create, read, update, delete)
 - Task ordering and prioritization
 - Status tracking for tasks
+- Notes support with Markdown formatting for both plans and tasks
 - MCP server for AI agent integration
 - Docker container support for easy deployment
 
@@ -26,11 +27,14 @@ The system is built using:
 valkey-ai-tasks/
 ├── cmd/                  # Command-line applications
 │   └── mcpserver/        # MCP server entry point
+├── examples/             # Example files and templates
+│   └── agent_prompts.md  # Example agent prompts for using notes
 ├── internal/             # Internal packages
 │   ├── models/           # Data models
 │   ├── mcp/              # MCP server implementation
-│   ├── mocks/            # Mock implementations for testing
-│   └── storage/          # Valkey storage layer
+│   ├── storage/          # Valkey storage layer
+│   └── utils/            # Utility functions
+│       └── markdown/     # Markdown processing utilities
 ├── tests/                # Test files
 │   ├── integration/      # Integration tests
 │   └── utils/            # Test utilities
@@ -147,6 +151,8 @@ The MCP server exposes the following endpoints:
 - `list_projects_by_application`: List all projects for a specific application
 - `update_project`: Update an existing project
 - `delete_project`: Delete a project by ID
+- `update_project_notes`: Update notes for a project
+- `get_project_notes`: Get notes for a project
 
 #### Task Management
 
@@ -157,6 +163,8 @@ The MCP server exposes the following endpoints:
 - `update_task`: Update an existing task
 - `delete_task`: Delete a task by ID
 - `reorder_task`: Change the order of a task within its project
+- `update_task_notes`: Update notes for a task
+- `get_task_notes`: Get notes for a task
 
 ## MCP Configuration
 
@@ -200,6 +208,33 @@ If accessing from outside the Docker network:
 }
 ```
 
+## Notes Functionality
+
+The system supports rich Markdown-formatted notes for both plans and tasks. This feature is particularly useful for AI agents to maintain context between sessions and document important information.
+
+### Notes Features
+
+- Full Markdown support including:
+  - Headings, lists, and tables
+  - Code blocks with syntax highlighting
+  - Links and images
+  - Emphasis and formatting
+- Separate notes for plans and tasks
+- Dedicated MCP tools for managing notes
+- Notes are included in all relevant API responses
+
+### Best Practices for Notes
+
+1. **Maintain Context**: Use notes to document important context that should persist between sessions
+2. **Document Decisions**: Record key decisions and their rationale
+3. **Track Progress**: Use notes to track progress and next steps
+4. **Organize Information**: Use Markdown formatting to structure information clearly
+5. **Code Examples**: Include code snippets with proper syntax highlighting
+
+### Notes Security
+
+Notes content is sanitized to prevent XSS and other security issues while preserving Markdown formatting.
+
 ## Using with AI Agents
 
 AI agents can interact with this task management system through the MCP API. Here's an example of how an agent might use the API:
@@ -210,7 +245,8 @@ AI agents can interact with this task management system through the MCP API. Her
    {
      "application_id": "my-app",
      "name": "New Feature Development",
-     "description": "Implement new features for the application"
+     "description": "Implement new features for the application",
+     "notes": "# Project Notes\n\nThis project aims to implement the following features:\n\n- Feature A\n- Feature B\n- Feature C"
    }
    ```
 3. The agent can add tasks to the project using either:
@@ -224,7 +260,8 @@ AI agents can interact with this task management system through the MCP API. Her
            \"title\": \"Task 1\",
            \"description\": \"Description for task 1\",
            \"priority\": \"high\",
-           \"status\": \"pending\"
+           \"status\": \"pending\",
+           \"notes\": \"# Task Notes\\n\\nThis task requires the following steps:\\n\\n1. Step one\\n2. Step two\\n3. Step three\"
          },
          {
            \"title\": \"Task 2\",
@@ -236,6 +273,20 @@ AI agents can interact with this task management system through the MCP API. Her
      }
      ```
 4. The agent calls `/sse/invoke/update_task` to update task status as work progresses
+5. The agent can add or update notes for a project using `/sse/invoke/update_project_notes`:
+   ```json
+   {
+     "id": "project-123",
+     "notes": "# Updated Project Notes\n\nAdded new requirements:\n\n- Requirement X\n- Requirement Y"
+   }
+   ```
+6. The agent can add or update notes for a task using `/sse/invoke/update_task_notes`:
+   ```json
+   {
+     "id": "task-456",
+     "notes": "# Updated Task Notes\n\nFound a better approach:\n\n```go\nfunc betterSolution() {\n  // code here\n}\n```"
+   }
+   ```
 
 ### Sample Agent Prompt
 
@@ -243,22 +294,41 @@ Here's a sample prompt that would trigger an AI agent to use the MCP task manage
 
 ```
 I need to organize work for my new application called "inventory-manager". 
-Create a project for this application and add the following tasks:
+Create a project for this application with the following project notes:
+"# Inventory Manager Project
+
+This project aims to create a comprehensive inventory management system with the following goals:
+- Track inventory levels in real-time
+- Generate reports on inventory movement
+- Provide alerts for low stock items"
+
+Add the following tasks:
 1. Set up database schema
 2. Implement REST API endpoints
 3. Create user authentication system
 4. Design frontend dashboard
 5. Implement inventory tracking features
 
+For the database schema task, add these notes:
+"# Database Schema Notes
+
+The schema should include the following tables:
+- Products
+- Categories
+- Inventory Transactions
+- Users
+- Roles"
+
 Prioritize the tasks appropriately and set the first two tasks as "in_progress".
 ```
 
 With this prompt, an AI agent with access to the Valkey MCP Task Management Server would:
-1. Create a new project with application_id "inventory-manager"
+1. Create a new project with application_id "inventory-manager" and the specified Markdown-formatted notes
 2. Add the five specified tasks to the project
-3. Set appropriate priorities for each task
-4. Update the status of the first two tasks to "in_progress"
-5. Return a summary of the created project and tasks
+3. Add detailed Markdown-formatted notes to the database schema task
+4. Set appropriate priorities for each task
+5. Update the status of the first two tasks to "in_progress"
+6. Return a summary of the created project and tasks
 
 ## License
 

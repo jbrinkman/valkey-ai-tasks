@@ -639,3 +639,37 @@ func (r *TaskRepository) UpdatePlanStatus(ctx context.Context, planID string) er
 
 	return nil
 }
+
+// UpdateNotes updates the notes for a task
+func (r *TaskRepository) UpdateNotes(ctx context.Context, id string, notes string) error {
+	// Get the task first to verify it exists
+	task, err := r.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Update the notes
+	task.Notes = notes
+	// Update the updated_at timestamp
+	task.UpdatedAt = time.Now()
+
+	// Store the updated task in Valkey
+	taskKey := GetTaskKey(task.ID)
+	_, err = r.client.client.HSet(ctx, taskKey, task.ToMap())
+	if err != nil {
+		return fmt.Errorf("failed to update task notes: %w", err)
+	}
+
+	return nil
+}
+
+// GetNotes retrieves the notes for a task
+func (r *TaskRepository) GetNotes(ctx context.Context, id string) (string, error) {
+	// Get the task
+	task, err := r.Get(ctx, id)
+	if err != nil {
+		return "", err
+	}
+
+	return task.Notes, nil
+}

@@ -1,0 +1,134 @@
+{
+    "plan": {
+        "id": "d0a4f997-a6b1-4eaa-9d0b-b0097d317fa2",
+        "application_id": "valkey-ai-tasks",
+        "name": "Notes Feature Implementation",
+        "description": "Add comprehensive notes functionality to Valkey Tasks at both project and task levels to improve context management for agentic AIs. This will allow AIs to maintain important context between sessions, track decisions, document progress, and improve collaboration.\n\n## Design Decisions\n- Notes will support Markdown formatting for rich content\n- Notes will be stored as text fields in the Valkey database\n- Both projects and tasks will have notes fields\n- Dedicated MCP tools will be provided for notes management\n- Notes will be included in all relevant API responses\n\n## Implementation Approach\n- Add notes fields to existing models without breaking compatibility\n- Extend repository methods to handle notes data\n- Update MCP tools to support notes in all operations\n- Create comprehensive tests for notes functionality\n- Document usage patterns for effective agent workflows",
+        "notes": "# Notes Feature Implementation - Process Notes\n\n## Task Completion Process\nAfter a task is finished, the full list of tasks (including their status) should be displayed so that we can validate whether we still want to proceed with the next task. This helps with:\n\n1. Reviewing overall progress\n2. Making informed decisions about next steps\n3. Potentially reprioritizing remaining tasks\n4. Identifying any dependencies or issues\n\n## Implementation Progress\n- Core functionality for notes has been implemented in models, repositories, and MCP tools\n- Unit tests have been cancelled in favor of integration tests\n- Integration tests have been completed for both plan and task notes\n- Tests verify proper storage, retrieval, and error handling for notes\n- Special character handling has been tested and confirmed working\n\n## Next Steps\n- Update documentation\n- Create example agent prompts\n",
+        "status": "completed",
+        "created_at": "2025-06-22T18:56:13-04:00",
+        "updated_at": "2025-06-23T09:57:29-04:00"
+    },
+    "tasks": [
+        {
+            "id": "3b2dea40-7b9e-415c-8031-b7af841127a4",
+            "plan_id": "d0a4f997-a6b1-4eaa-9d0b-b0097d317fa2",
+            "title": "Update Data Models",
+            "description": "Add notes field to Project and Task models:\n- Modify models/project.go to include notes field\n- Modify models/task.go to include notes field\n- Update JSON struct tags for API serialization\n- Add validation for notes field (if needed)",
+            "notes": "",
+            "status": "completed",
+            "priority": "high",
+            "order": 0,
+            "created_at": "2025-06-22T18:56:47-04:00",
+            "updated_at": "2025-06-22T20:37:57-04:00"
+        },
+        {
+            "id": "a0746d96-aad5-490a-aaeb-3dcec26d57b1",
+            "plan_id": "d0a4f997-a6b1-4eaa-9d0b-b0097d317fa2",
+            "title": "Update Database Schema",
+            "description": "Update Valkey schema to include notes fields:\n- Add notes field to project hash structure\n- Add notes field to task hash structure\n- Update schema version if needed\n- Create migration script if needed",
+            "notes": "",
+            "status": "completed",
+            "priority": "high",
+            "order": 1,
+            "created_at": "2025-06-22T18:56:47-04:00",
+            "updated_at": "2025-06-22T20:38:56-04:00"
+        },
+        {
+            "id": "634aa04a-b5ff-48fa-aabc-ff7fa810c7fe",
+            "plan_id": "d0a4f997-a6b1-4eaa-9d0b-b0097d317fa2",
+            "title": "Update Repository Layer",
+            "description": "Modify repository methods to handle notes:\n- Update ProjectRepository interface and implementation\n- Update TaskRepository interface and implementation\n- Add methods for getting/setting notes\n- Update existing methods to include notes in responses",
+            "notes": "",
+            "status": "completed",
+            "priority": "high",
+            "order": 2,
+            "created_at": "2025-06-19T08:32:48.62148-04:00",
+            "updated_at": "2025-06-19T08:32:48.62148-04:00"
+        },
+        {
+            "id": "f2d78b0d-2845-4d9a-aa9c-a0e50bd30ad8",
+            "plan_id": "d0a4f997-a6b1-4eaa-9d0b-b0097d317fa2",
+            "title": "Update MCP Project Tools",
+            "description": "Modify project-related MCP tools to support notes:\n- Update create_project to accept notes parameter\n- Update update_project to handle notes updates\n- Update get_project to include notes in response\n- Create update_project_notes tool for dedicated notes management",
+            "notes": "",
+            "status": "completed",
+            "priority": "high",
+            "order": 3,
+            "created_at": "2025-06-22T18:56:47-04:00",
+            "updated_at": "2025-06-22T20:57:27-04:00"
+        },
+        {
+            "id": "d2d2f6b2-e5b1-4e0e-a8cd-1c8b9f7b1c3e",
+            "plan_id": "d0a4f997-a6b1-4eaa-9d0b-b0097d317fa2",
+            "title": "Update MCP Task Tools",
+            "description": "Modify task-related MCP tools to support notes:\n- Update create_task to accept notes parameter\n- Update update_task to handle notes updates\n- Update get_task to include notes in response\n- Create update_task_notes tool for dedicated notes management",
+            "notes": "",
+            "status": "completed",
+            "priority": "high",
+            "order": 4,
+            "created_at": "2025-06-22T18:56:47-04:00",
+            "updated_at": "2025-06-22T20:57:27-04:00"
+        },
+        {
+            "id": "a4f7f5d0-c2d4-4a3c-a1b2-c3d4e5f6a7b8",
+            "plan_id": "d0a4f997-a6b1-4eaa-9d0b-b0097d317fa2",
+            "title": "Implement Markdown Support",
+            "description": "Add Markdown support for notes content:\n- Implement Markdown parsing and rendering\n- Add sanitization for security\n- Ensure proper handling of code blocks\n- Support common Markdown formatting elements",
+            "notes": "",
+            "status": "completed",
+            "priority": "medium",
+            "order": 5,
+            "created_at": "2025-06-22T18:56:47-04:00",
+            "updated_at": "2025-06-22T20:57:27-04:00"
+        },
+        {
+            "id": "b5c6d7e8-f9a0-4b1c-8d2e-3f4a5b6c7d8e",
+            "plan_id": "d0a4f997-a6b1-4eaa-9d0b-b0097d317fa2",
+            "title": "Create Unit Tests",
+            "description": "Task cancelled: We've decided to focus on integration tests rather than unit tests for the MCP tools. The unit tests were primarily testing mock objects which have been removed from the codebase. Integration tests provide better end-to-end validation of functionality with real repositories instead of mocks.",
+            "notes": "",
+            "status": "cancelled",
+            "priority": "high",
+            "order": 6,
+            "created_at": "2025-06-22T18:56:47-04:00",
+            "updated_at": "2025-06-23T09:03:48-04:00"
+        },
+        {
+            "id": "d230ae27-0f97-4561-a6c9-27f5d966a2af",
+            "plan_id": "d0a4f997-a6b1-4eaa-9d0b-b0097d317fa2",
+            "title": "Create Integration Tests",
+            "description": "Develop integration tests for notes functionality:\n- Test end-to-end notes workflow\n- Test persistence of notes in Valkey\n- Test notes in API responses\n- Test concurrent updates to notes",
+            "notes": "",
+            "status": "completed",
+            "priority": "medium",
+            "order": 7,
+            "created_at": "2025-06-22T18:56:47-04:00",
+            "updated_at": "2025-06-23T09:09:41-04:00"
+        },
+        {
+            "id": "c22c266e-9130-418c-945c-57fe5a0b7c7d",
+            "plan_id": "d0a4f997-a6b1-4eaa-9d0b-b0097d317fa2",
+            "title": "Update Documentation",
+            "description": "Update project documentation to include notes feature:\n- Update README with notes functionality\n- Update API documentation\n- Add examples of using notes in MCP tools\n- Document best practices for notes usage",
+            "notes": "",
+            "status": "completed",
+            "priority": "medium",
+            "order": 8,
+            "created_at": "2025-06-22T18:56:47-04:00",
+            "updated_at": "2025-06-23T09:24:16-04:00"
+        },
+        {
+            "id": "7904d1e3-be83-4edb-9392-888ddc824227",
+            "plan_id": "d0a4f997-a6b1-4eaa-9d0b-b0097d317fa2",
+            "title": "Create Example Agent Prompts",
+            "description": "Develop example prompts for agents using notes:\n- Create prompt for maintaining context with notes\n- Create prompt for collaborative workflows using notes\n- Document patterns for effective notes usage by agents\n- Include examples in README",
+            "notes": "",
+            "status": "completed",
+            "priority": "low",
+            "order": 9,
+            "created_at": "2025-06-22T18:56:47-04:00",
+            "updated_at": "2025-06-23T09:28:21-04:00"
+        }
+    ]
+}

@@ -48,6 +48,7 @@ When adding new tests:
 3. Use Testify's assertion and mock packages for testing
 4. Use utility functions from `utils/` for common testing operations
 5. Follow Go testing best practices and naming conventions
+6. For testing notes functionality, ensure you test with various Markdown formats and special characters
 
 ### Example Test
 
@@ -63,5 +64,53 @@ func TestSomething(t *testing.T) {
     // Use testify assertions
     req.Equal(expected, result)
     req.NoError(err)
+}
+```
+
+## Testing Notes Functionality
+
+The system supports Markdown-formatted notes for both plans and tasks. When testing notes functionality:
+
+### Integration Tests
+
+Integration tests for notes functionality are located in:
+
+- `integration/plan_repository_suite_test.go`: Tests for plan notes
+- `integration/task_repository_suite_test.go`: Tests for task notes
+
+These tests cover:
+
+1. **Creating and updating notes**: Testing that notes can be created and updated correctly
+2. **Retrieving notes**: Testing that notes can be retrieved correctly
+3. **Error handling**: Testing behavior when attempting to update or retrieve notes for non-existent entities
+4. **Special characters**: Testing that notes with special characters, emojis, and Unicode are handled correctly
+5. **Markdown formatting**: Testing that various Markdown formatting elements are preserved
+
+### Example Notes Test
+
+```go
+func (suite *TaskRepositorySuite) TestUpdateTaskNotes() {
+    // Create a task
+    task := models.Task{
+        ID:          uuid.New().String(),
+        PlanID:     "test-plan-id",
+        Title:      "Test Task",
+        Description: "Test Description",
+        Status:     "pending",
+        Priority:   "medium",
+    }
+    
+    err := suite.taskRepo.Create(context.Background(), task)
+    suite.NoError(err)
+    
+    // Update notes
+    markdownNotes := "# Task Notes\n\nThis is a **bold** statement.\n\n```go\nfunc example() {\n  fmt.Println(\"Hello\")\n}\n```"
+    err = suite.taskRepo.UpdateNotes(context.Background(), task.ID, markdownNotes)
+    suite.NoError(err)
+    
+    // Get notes and verify
+    notes, err := suite.taskRepo.GetNotes(context.Background(), task.ID)
+    suite.NoError(err)
+    suite.Equal(markdownNotes, notes)
 }
 ```

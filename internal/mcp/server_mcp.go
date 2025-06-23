@@ -7,10 +7,12 @@ import (
 	"log"
 	"time"
 
-	"github.com/jbrinkman/valkey-ai-tasks/internal/models"
-	"github.com/jbrinkman/valkey-ai-tasks/internal/storage"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+
+	"github.com/jbrinkman/valkey-ai-tasks/internal/models"
+	"github.com/jbrinkman/valkey-ai-tasks/internal/storage"
+	"github.com/jbrinkman/valkey-ai-tasks/internal/utils/markdown"
 )
 
 // MCPGoServer wraps the mark3labs/mcp-go server implementation
@@ -65,6 +67,10 @@ func (s *MCPGoServer) registerTools() {
 	s.registerUpdatePlanStatusTool()
 	s.registerListPlansByStatusTool()
 
+	// Plan notes tools
+	s.registerUpdatePlanNotesTool()
+	s.registerGetPlanNotesTool()
+
 	// Task tools
 	s.registerCreateTaskTool()
 	s.registerGetTaskTool()
@@ -76,6 +82,10 @@ func (s *MCPGoServer) registerTools() {
 	s.registerBulkCreateTasksTool()
 	s.registerReorderTaskTool()
 	s.registerListOrphanedTasksTool()
+
+	// Task notes tools
+	s.registerUpdateTaskNotesTool()
+	s.registerGetTaskNotesTool()
 }
 
 // Plan tools implementation
@@ -94,6 +104,9 @@ func (s *MCPGoServer) registerCreatePlanTool() {
 		mcp.WithString("description",
 			mcp.Description("Detailed description of the feature's goals, requirements, and scope (optional)"),
 		),
+		mcp.WithString("notes",
+			mcp.Description("Initial Markdown-formatted notes for the plan (optional)"),
+		),
 	)
 
 	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -109,11 +122,35 @@ func (s *MCPGoServer) registerCreatePlanTool() {
 		}
 
 		description := request.GetString("description", "no description provided")
+		notes := request.GetString("notes", "")
 
 		// Create the plan
 		plan, err := s.planRepo.Create(ctx, applicationID, name, description)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to create plan: %v", err)), nil
+		}
+
+		// If notes were provided, validate, format and update them
+		if notes != "" {
+			// Import markdown utilities
+			if err := markdown.Validate(notes); err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Invalid notes format: %v", err)), nil
+			}
+
+			// Sanitize and format the notes
+			notes = markdown.Sanitize(notes)
+			notes = markdown.Format(notes)
+
+			err = s.planRepo.UpdateNotes(ctx, plan.ID, notes)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Failed to set initial notes: %v", err)), nil
+			}
+
+			// Refresh plan to include notes
+			plan, err = s.planRepo.Get(ctx, plan.ID)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Failed to refresh plan: %v", err)), nil
+			}
 		}
 
 		planJson, err := json.Marshal(plan)
@@ -277,6 +314,9 @@ func (s *MCPGoServer) registerUpdatePlanTool() {
 		mcp.WithString("description",
 			mcp.Description("New plan description (optional)"),
 		),
+		mcp.WithString("notes",
+			mcp.Description("New Markdown-formatted notes (optional)"),
+		),
 	)
 
 	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -300,6 +340,28 @@ func (s *MCPGoServer) registerUpdatePlanTool() {
 		description := request.GetString("description", plan.Description)
 		if description != plan.Description {
 			plan.Description = description
+		}
+
+		// Check if notes are provided
+		notes := request.GetString("notes", "")
+		if notes != "" {
+			// Validate and format the markdown content
+			err = markdown.Validate(notes)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Invalid notes format: %v", err)), nil
+			}
+
+			// Sanitize and format the notes
+			notes = markdown.Sanitize(notes)
+			notes = markdown.Format(notes)
+
+			// Update notes separately using the dedicated method
+			err = s.planRepo.UpdateNotes(ctx, id, notes)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Failed to update notes: %v", err)), nil
+			}
+			// Update plan.Notes for the response
+			plan.Notes = notes
 		}
 
 		// Save the updated plan
@@ -399,6 +461,9 @@ func (s *MCPGoServer) registerCreateTaskTool() {
 			mcp.Description("Importance and urgency of this task in the overall feature implementation plan (optional, defaults to 'medium')"),
 			mcp.Enum("low", "medium", "high"),
 		),
+		mcp.WithString("notes",
+			mcp.Description("Initial Markdown-formatted notes for the task (optional)"),
+		),
 	)
 
 	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -413,6 +478,7 @@ func (s *MCPGoServer) registerCreateTaskTool() {
 		}
 
 		description := request.GetString("description", "no description provided")
+		notes := request.GetString("notes", "")
 
 		priorityStr := request.GetString("priority", string(models.TaskPriorityMedium))
 		priority := models.TaskPriority(priorityStr)
@@ -420,6 +486,30 @@ func (s *MCPGoServer) registerCreateTaskTool() {
 		task, err := s.taskRepo.Create(ctx, planID, title, description, priority)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to create task: %v", err)), nil
+		}
+
+		// If notes were provided, validate, format and update them
+		if notes != "" {
+			// Validate and format the markdown content
+			err = markdown.Validate(notes)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Invalid notes format: %v", err)), nil
+			}
+
+			// Sanitize and format the notes
+			notes = markdown.Sanitize(notes)
+			notes = markdown.Format(notes)
+
+			err = s.taskRepo.UpdateNotes(ctx, task.ID, notes)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Failed to set initial notes: %v", err)), nil
+			}
+
+			// Refresh task to include notes
+			task, err = s.taskRepo.Get(ctx, task.ID)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Failed to refresh task: %v", err)), nil
+			}
 		}
 
 		taskJson, err := json.Marshal(task)
@@ -538,6 +628,9 @@ func (s *MCPGoServer) registerUpdateTaskTool() {
 			mcp.Description("New task priority (optional)"),
 			mcp.Enum("low", "medium", "high"),
 		),
+		mcp.WithString("notes",
+			mcp.Description("New Markdown-formatted notes (optional)"),
+		),
 	)
 
 	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -568,6 +661,28 @@ func (s *MCPGoServer) registerUpdateTaskTool() {
 
 		priorityStr := request.GetString("priority", string(task.Priority))
 		task.Priority = models.TaskPriority(priorityStr)
+
+		// Check if notes are provided
+		notes := request.GetString("notes", "")
+		if notes != "" {
+			// Validate and format the markdown content
+			err = markdown.Validate(notes)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Invalid notes format: %v", err)), nil
+			}
+
+			// Sanitize and format the notes
+			notes = markdown.Sanitize(notes)
+			notes = markdown.Format(notes)
+
+			// Update notes separately using the dedicated method
+			err = s.taskRepo.UpdateNotes(ctx, id, notes)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Failed to update notes: %v", err)), nil
+			}
+			// Update task.Notes for the response
+			task.Notes = notes
+		}
 
 		// Save the updated task
 		err = s.taskRepo.Update(ctx, task)
@@ -836,5 +951,175 @@ func (s *MCPGoServer) registerListOrphanedTasksTool() {
 		}
 
 		return mcp.NewToolResultText(string(tasksJson)), nil
+	})
+}
+
+// registerUpdatePlanNotesTool registers a tool to update notes for a plan
+func (s *MCPGoServer) registerUpdatePlanNotesTool() {
+	tool := mcp.NewTool("update_plan_notes",
+		mcp.WithDescription("Update notes for a plan"),
+		mcp.WithString("id",
+			mcp.Required(),
+			mcp.Description("Plan ID"),
+		),
+		mcp.WithString("notes",
+			mcp.Required(),
+			mcp.Description("Markdown-formatted notes content"),
+		),
+	)
+
+	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		id, err := request.RequireString("id")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		notes, err := request.RequireString("notes")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		// Validate and format the markdown content
+		err = markdown.Validate(notes)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Invalid notes format: %v", err)), nil
+		}
+
+		// Sanitize and format the notes
+		notes = markdown.Sanitize(notes)
+		notes = markdown.Format(notes)
+
+		// Update the notes
+		err = s.planRepo.UpdateNotes(ctx, id, notes)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to update plan notes: %v", err)), nil
+		}
+
+		return mcp.NewToolResultText(fmt.Sprintf("Successfully updated notes for plan %s", id)), nil
+	})
+}
+
+// registerGetPlanNotesTool registers a tool to get notes for a plan
+func (s *MCPGoServer) registerGetPlanNotesTool() {
+	tool := mcp.NewTool("get_plan_notes",
+		mcp.WithDescription("Retrieve the notes for a specific plan"),
+		mcp.WithString("id",
+			mcp.Required(),
+			mcp.Description("Plan ID"),
+		),
+	)
+
+	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		id, err := request.RequireString("id")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		// Get the notes
+		notes, err := s.planRepo.GetNotes(ctx, id)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to get plan notes: %v", err)), nil
+		}
+
+		result := map[string]string{
+			"id":    id,
+			"notes": notes,
+		}
+
+		resultJson, err := json.Marshal(result)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal result: %v", err)), nil
+		}
+		return mcp.NewToolResultText(string(resultJson)), nil
+	})
+}
+
+// registerUpdateTaskNotesTool registers a tool to update notes for a task
+func (s *MCPGoServer) registerUpdateTaskNotesTool() {
+	tool := mcp.NewTool("update_task_notes",
+		mcp.WithDescription("Update the notes for a specific task"),
+		mcp.WithString("id",
+			mcp.Required(),
+			mcp.Description("Task ID"),
+		),
+		mcp.WithString("notes",
+			mcp.Required(),
+			mcp.Description("Markdown-formatted notes content"),
+		),
+	)
+
+	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		id, err := request.RequireString("id")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		notes, err := request.RequireString("notes")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		// Validate and format the markdown content
+		err = markdown.Validate(notes)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Invalid notes format: %v", err)), nil
+		}
+
+		// Sanitize and format the notes
+		notes = markdown.Sanitize(notes)
+		notes = markdown.Format(notes)
+
+		// Update the notes
+		err = s.taskRepo.UpdateNotes(ctx, id, notes)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to update task notes: %v", err)), nil
+		}
+
+		// Get the updated task
+		task, err := s.taskRepo.Get(ctx, id)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to get updated task: %v", err)), nil
+		}
+
+		taskJson, err := json.Marshal(task)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal task: %v", err)), nil
+		}
+		return mcp.NewToolResultText(string(taskJson)), nil
+	})
+}
+
+// registerGetTaskNotesTool registers a tool to get notes for a task
+func (s *MCPGoServer) registerGetTaskNotesTool() {
+	tool := mcp.NewTool("get_task_notes",
+		mcp.WithDescription("Retrieve the notes for a specific task"),
+		mcp.WithString("id",
+			mcp.Required(),
+			mcp.Description("Task ID"),
+		),
+	)
+
+	s.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		id, err := request.RequireString("id")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		// Get the notes
+		notes, err := s.taskRepo.GetNotes(ctx, id)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to get task notes: %v", err)), nil
+		}
+
+		result := map[string]string{
+			"id":    id,
+			"notes": notes,
+		}
+
+		resultJson, err := json.Marshal(result)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to marshal result: %v", err)), nil
+		}
+		return mcp.NewToolResultText(string(resultJson)), nil
 	})
 }

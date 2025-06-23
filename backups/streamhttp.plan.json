@@ -1,0 +1,110 @@
+{
+    "plan": {
+        "id": "1baaa9c0-545c-4f1f-9cc5-8dbe87f1e81f",
+        "application_id": "valkey-ai-tasks",
+        "name": "Streamable HTTP Transport Implementation",
+        "description": "Add support for Streamable HTTP transport to the MCP server while maintaining the existing SSE transport functionality. This will improve compatibility with a wider range of agentic tools that don't support SSE.\n\n## Design Decisions\n- Implement Streamable HTTP transport as an additional option alongside SSE\n- Use the same underlying function handlers for both transports\n- Allow clients to choose their preferred transport method\n- Maintain backward compatibility with existing SSE clients\n- Follow MCP protocol specifications for Streamable HTTP\n\n## Implementation Approach\n- Create a new transport handler for Streamable HTTP\n- Refactor the existing transport layer to support multiple transports\n- Implement proper content-type and response formatting for Streamable HTTP\n- Add configuration options for enabling/disabling transports\n- Create comprehensive tests for the new transport\n- Update documentation to reflect the new transport options",
+        "notes": "",
+        "status": "new",
+        "created_at": "2025-06-22T19:15:00-04:00",
+        "updated_at": "2025-06-22T19:15:00-04:00"
+    },
+    "tasks": [
+        {
+            "id": "39d8807e-3c64-4635-8817-96d39ad8546d",
+            "plan_id": "1baaa9c0-545c-4f1f-9cc5-8dbe87f1e81f",
+            "title": "Research Streamable HTTP Implementation in mcp-go Module",
+            "description": "Research how to implement Streamable HTTP transport using the existing mcp-go module:\n- Examine the mcp-go module documentation and code for Streamable HTTP support\n- Identify the APIs and methods needed to enable Streamable HTTP transport\n- Document how to configure and initialize both SSE and Streamable HTTP transports\n- Research any differences in handler implementations between transports\n- Create implementation notes for the development team",
+            "notes": "",
+            "status": "pending",
+            "priority": "high",
+            "order": 0,
+            "created_at": "2025-06-22T19:15:34-04:00",
+            "updated_at": "2025-06-22T19:23:50-04:00"
+        },
+        {
+            "id": "f37fdc52-3c7e-4bbb-b5e9-26e8d0650b6d",
+            "plan_id": "1baaa9c0-545c-4f1f-9cc5-8dbe87f1e81f",
+            "title": "Refactor Transport Layer for Multiple Transports",
+            "description": "Refactor the existing transport layer to support multiple transport types with different URL endpoints:\n- Configure SSE transport to use the `/sse` endpoint\n- Configure Streamable HTTP transport to use the `/mcp` endpoint\n- Ensure both transports can be served from a single server instance\n- Create appropriate routing for each transport type\n- Implement SSE transport using the existing implementation\n- Prepare the architecture for adding Streamable HTTP transport\n- Ensure backward compatibility with existing code and clients",
+            "notes": "",
+            "status": "pending",
+            "priority": "high",
+            "order": 1,
+            "created_at": "2025-06-22T19:15:34-04:00",
+            "updated_at": "2025-06-22T19:28:54-04:00"
+        },
+        {
+            "id": "4d17ede7-99dd-4004-a222-67233a4432db",
+            "plan_id": "1baaa9c0-545c-4f1f-9cc5-8dbe87f1e81f",
+            "title": "Implement Streamable HTTP Transport Handler",
+            "description": "Create a new transport handler for Streamable HTTP:\n- Implement proper request parsing\n- Set up correct content-type headers\n- Format responses according to MCP Streamable HTTP specification\n- Handle streaming responses appropriately\n- Implement error handling\n- Ensure compatibility with various HTTP clients",
+            "notes": "",
+            "status": "pending",
+            "priority": "high",
+            "order": 2,
+            "created_at": "2025-06-22T19:15:34-04:00",
+            "updated_at": "2025-06-22T19:23:50-04:00"
+        },
+        {
+            "id": "c2e3d4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f",
+            "plan_id": "1baaa9c0-545c-4f1f-9cc5-8dbe87f1e81f",
+            "title": "Implement Transport Selection Mechanism",
+            "description": "Create a mechanism to select the appropriate transport based on client request:\n- Implement URL path-based selection\n- Add content-type based selection as a fallback\n- Create a default transport configuration\n- Ensure proper error handling for unsupported transport requests\n- Document the selection process for clients",
+            "notes": "",
+            "status": "pending",
+            "priority": "high",
+            "order": 3,
+            "created_at": "2025-06-22T19:15:34-04:00",
+            "updated_at": "2025-06-22T19:23:50-04:00"
+        },
+        {
+            "id": "8a7b6c5d-4e3f-2a1b-0c9d-8e7f6a5b4c3d",
+            "plan_id": "1baaa9c0-545c-4f1f-9cc5-8dbe87f1e81f",
+            "title": "Update Configuration Options",
+            "description": "Update server configuration to support multiple transports:\n- Add configuration options for enabling/disabling transports\n- Implement port configuration for different transports if needed\n- Update environment variable handling\n- Create sensible defaults for all configurations",
+            "notes": "",
+            "status": "pending",
+            "priority": "medium",
+            "order": 4,
+            "created_at": "2025-06-22T19:15:34-04:00",
+            "updated_at": "2025-06-22T19:23:50-04:00"
+        },
+        {
+            "id": "34300d46-c1df-486b-beec-ba9efa7c9578",
+            "plan_id": "1baaa9c0-545c-4f1f-9cc5-8dbe87f1e81f",
+            "title": "Create Unit Tests for Streamable HTTP Transport",
+            "description": "Develop comprehensive unit tests for the new transport:\n- Test request parsing and handling\n- Test response formatting\n- Test error handling\n- Test transport selection mechanism\n- Test configuration options",
+            "notes": "",
+            "status": "pending",
+            "priority": "high",
+            "order": 5,
+            "created_at": "2025-06-22T19:15:34-04:00",
+            "updated_at": "2025-06-22T19:23:50-04:00"
+        },
+        {
+            "id": "b33b4c27-6c05-4791-a1c8-d62fe3ea8f69",
+            "plan_id": "1baaa9c0-545c-4f1f-9cc5-8dbe87f1e81f",
+            "title": "Create Integration Tests",
+            "description": "Develop integration tests for the Streamable HTTP transport:\n- Test end-to-end functionality with mock clients\n- Test compatibility with actual MCP clients if possible\n- Test performance under load\n- Test concurrent connections\n- Compare behavior with SSE transport",
+            "notes": "",
+            "status": "pending",
+            "priority": "medium",
+            "order": 6,
+            "created_at": "2025-06-22T19:15:34-04:00",
+            "updated_at": "2025-06-22T19:23:50-04:00"
+        },
+        {
+            "id": "1c900931-e4e0-40c8-aad2-1ea416f7ad9a",
+            "plan_id": "1baaa9c0-545c-4f1f-9cc5-8dbe87f1e81f",
+            "title": "Update README Documentation",
+            "description": "Update project documentation to include Streamable HTTP transport:\n- Document new endpoints and their usage\n- Update configuration documentation\n- Add examples of connecting with different clients\n- Document any differences in behavior between transports\n- Update MCP configuration examples",
+            "notes": "",
+            "status": "pending",
+            "priority": "medium",
+            "order": 7,
+            "created_at": "2025-06-22T19:15:34-04:00",
+            "updated_at": "2025-06-22T19:23:50-04:00"
+        }
+    ]
+}

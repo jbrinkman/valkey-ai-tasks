@@ -746,6 +746,86 @@ func (s *TaskRepositorySuite) TestMCPBulkCreateTasks() {
 	s.Equal(3, len(tasks), "Should have 3 tasks in the plan")
 }
 
+// TestUpdateTaskNotes tests updating notes for a task
+func (s *TaskRepositorySuite) TestUpdateTaskNotes() {
+	taskRepo := s.GetTaskRepository()
+
+	// Create a task
+	task, err := taskRepo.Create(s.Context, s.TestPlan.ID, "Test Task", "Test task description", models.TaskPriorityMedium)
+	s.NoError(err, "Failed to create task")
+
+	// Initially notes should be empty
+	s.Empty(task.Notes, "Task notes should be empty initially")
+
+	// Update notes
+	markdownNotes := "# Task Notes\n\nThis is a **test** note with _markdown_ formatting."
+	err = taskRepo.UpdateNotes(s.Context, task.ID, markdownNotes)
+	s.NoError(err, "Failed to update task notes")
+
+	// Verify notes were updated
+	updatedNotes, err := taskRepo.GetNotes(s.Context, task.ID)
+	s.NoError(err, "Failed to get task notes")
+	s.Equal(markdownNotes, updatedNotes, "Task notes should match what was set")
+
+	// Verify the task itself has the updated notes when retrieved
+	updatedTask, err := taskRepo.Get(s.Context, task.ID)
+	s.NoError(err, "Failed to get task")
+	s.Equal(markdownNotes, updatedTask.Notes, "Task notes should be updated in the task object")
+}
+
+// TestGetTaskNotes tests retrieving notes for a task
+func (s *TaskRepositorySuite) TestGetTaskNotes() {
+	taskRepo := s.GetTaskRepository()
+
+	// Create a task
+	task, err := taskRepo.Create(s.Context, s.TestPlan.ID, "Test Task", "Test task description", models.TaskPriorityMedium)
+	s.NoError(err, "Failed to create task")
+
+	// Set notes
+	markdownNotes := "# Task Notes\n\n- Item 1\n- Item 2\n\n```go\nfunc example() {\n\tfmt.Println(\"Hello\")\n}\n```"
+	err = taskRepo.UpdateNotes(s.Context, task.ID, markdownNotes)
+	s.NoError(err, "Failed to update task notes")
+
+	// Get notes
+	notes, err := taskRepo.GetNotes(s.Context, task.ID)
+	s.NoError(err, "Failed to get task notes")
+	s.Equal(markdownNotes, notes, "Retrieved notes should match what was set")
+
+	// Test getting notes for non-existent task
+	_, err = taskRepo.GetNotes(s.Context, "non-existent-task-id")
+	s.Error(err, "Getting notes for non-existent task should fail")
+	s.Contains(err.Error(), "not found", "Error should indicate task not found")
+}
+
+// TestUpdateNonExistentTaskNotes tests updating notes for a non-existent task
+func (s *TaskRepositorySuite) TestUpdateNonExistentTaskNotes() {
+	taskRepo := s.GetTaskRepository()
+
+	// Try to update notes for a non-existent task
+	err := taskRepo.UpdateNotes(s.Context, "non-existent-task-id", "Some notes")
+	s.Error(err, "Updating notes for non-existent task should fail")
+	s.Contains(err.Error(), "not found", "Error should indicate task not found")
+}
+
+// TestTaskNotesWithSpecialCharacters tests handling of special characters in task notes
+func (s *TaskRepositorySuite) TestTaskNotesWithSpecialCharacters() {
+	taskRepo := s.GetTaskRepository()
+
+	// Create a task
+	task, err := taskRepo.Create(s.Context, s.TestPlan.ID, "Test Task", "Test task description", models.TaskPriorityMedium)
+	s.NoError(err, "Failed to create task")
+
+	// Notes with special characters and emojis
+	specialNotes := "# Special Notes! 🚀\n\n* Special chars: !@#$%^&*()_+{}|:\"<>?[]\\;',./\n* Emojis: 😀 🤖 💻 🔥\n* Unicode: ñáéíóú 你好 привет こんにちは"
+	err = taskRepo.UpdateNotes(s.Context, task.ID, specialNotes)
+	s.NoError(err, "Failed to update task notes with special characters")
+
+	// Verify notes were stored correctly
+	retrievedNotes, err := taskRepo.GetNotes(s.Context, task.ID)
+	s.NoError(err, "Failed to get task notes")
+	s.Equal(specialNotes, retrievedNotes, "Task notes with special characters should be preserved")
+}
+
 // TestTaskRepositorySuite runs the task repository test suite
 func TestTaskRepositorySuite(t *testing.T) {
 	if testing.Short() {

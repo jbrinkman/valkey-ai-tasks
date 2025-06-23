@@ -30,6 +30,7 @@ type Task struct {
 	PlanID      string       `json:"plan_id"`
 	Title       string       `json:"title"`
 	Description string       `json:"description"`
+	Notes       string       `json:"notes"` // Added field for storing markdown notes
 	Status      TaskStatus   `json:"status"`
 	Priority    TaskPriority `json:"priority"`
 	Order       int          `json:"order"`
@@ -45,6 +46,7 @@ func NewTask(id, planID, title, description string, priority TaskPriority) *Task
 		PlanID:      planID,
 		Title:       title,
 		Description: description,
+		Notes:       "", // Initialize with empty notes
 		Status:      TaskStatusPending,
 		Priority:    priority,
 		Order:       0, // Will be set when added to the plan
@@ -60,6 +62,7 @@ func (t *Task) ToMap() map[string]string {
 		"plan_id":     t.PlanID,
 		"title":       t.Title,
 		"description": t.Description,
+		"notes":       t.Notes,
 		"status":      string(t.Status),
 		"priority":    string(t.Priority),
 		"order":       fmt.Sprintf("%d", t.Order),
@@ -74,6 +77,7 @@ func (t *Task) FromMap(data map[string]string) error {
 	t.PlanID = data["plan_id"]
 	t.Title = data["title"]
 	t.Description = data["description"]
+	t.Notes = data["notes"] // Add notes field
 	t.Status = TaskStatus(data["status"])
 	t.Priority = TaskPriority(data["priority"])
 

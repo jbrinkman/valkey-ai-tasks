@@ -20,6 +20,7 @@ type Plan struct {
 	ApplicationID string     `json:"application_id"` // Added field for application association
 	Name          string     `json:"name"`
 	Description   string     `json:"description"`
+	Notes         string     `json:"notes"`
 	Status        PlanStatus `json:"status"`
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
@@ -33,6 +34,7 @@ func NewPlan(id, applicationID, name, description string) *Plan {
 		ApplicationID: applicationID,
 		Name:          name,
 		Description:   description,
+		Notes:         "",
 		Status:        PlanStatusNew,
 		CreatedAt:     now,
 		UpdatedAt:     now,
@@ -46,6 +48,7 @@ func (p *Plan) ToMap() map[string]string {
 		"application_id": p.ApplicationID,
 		"name":           p.Name,
 		"description":    p.Description,
+		"notes":          p.Notes,
 		"status":         string(p.Status),
 		"created_at":     p.CreatedAt.Format(time.RFC3339),
 		"updated_at":     p.UpdatedAt.Format(time.RFC3339),
@@ -58,6 +61,13 @@ func (p *Plan) FromMap(data map[string]string) error {
 	p.ApplicationID = data["application_id"]
 	p.Name = data["name"]
 	p.Description = data["description"]
+	
+	// Get notes with backward compatibility
+	if notes, ok := data["notes"]; ok {
+		p.Notes = notes
+	} else {
+		p.Notes = ""
+	}
 	
 	// Handle status with backward compatibility
 	if status, ok := data["status"]; ok {
