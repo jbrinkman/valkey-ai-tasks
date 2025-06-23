@@ -2,6 +2,8 @@ package integration
 
 import (
 	"context"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/jbrinkman/valkey-ai-tasks/internal/storage"
@@ -41,8 +43,14 @@ func (s *ValkeyClientSuite) TestConnection() {
 	defer utils.StopValkeyContainer(s.Context, s.T(), container)
 
 	// Extract host and port from container URI
-	host := "localhost" // Default to localhost
-	port := 6379        // Default port
+	// Parse the endpoint from the container URI (format: redis://host:port)
+	endpoint := strings.TrimPrefix(container.URI, "redis://")
+	parts := strings.Split(endpoint, ":")
+	s.Require().Equal(2, len(parts), "Expected endpoint format host:port")
+	host := parts[0]
+	port, err := strconv.Atoi(parts[1])
+	s.Require().NoError(err, "Failed to parse port from container endpoint")
+	s.Require().NotEqual(6379, port, "Test must not use port 6379 to avoid conflicts with development instances")
 
 	// Create a new Valkey client
 	valkeyClient, err := storage.NewValkeyClient(host, port, "", "")
@@ -56,8 +64,14 @@ func (s *ValkeyClientSuite) TestConnection() {
 
 // TestConnectionFailure tests Valkey client connection failure scenarios
 func (s *ValkeyClientSuite) TestConnectionFailure() {
+	// Use a random port that's not 6379 to avoid conflicts with development instances
+	randomPort := 10000 + (int(s.T().Name()[0]) % 1000) // Simple way to get a random port between 10000-10999
+	if randomPort == 6379 {
+		randomPort = 10999 // Ensure we never use 6379
+	}
+	
 	// Test connection to non-existent server
-	valkeyClient, err := storage.NewValkeyClient("non-existent-host", 6379, "", "")
+	valkeyClient, err := storage.NewValkeyClient("non-existent-host", randomPort, "", "")
 	if err == nil {
 		// Some implementations might not fail on creation, so try to ping
 		err = valkeyClient.Ping(s.Context)
@@ -73,9 +87,14 @@ func (s *ValkeyClientSuite) TestConnectionFailure() {
 	s.Require().NoError(err, "Failed to start Valkey container")
 	defer utils.StopValkeyContainer(s.Context, s.T(), container)
 
-	// Extract host and port
-	host := "localhost" // Default to localhost
-	port := 6379        // Default port
+	// Extract host and port from container URI
+	endpoint := strings.TrimPrefix(container.URI, "redis://")
+	parts := strings.Split(endpoint, ":")
+	s.Require().Equal(2, len(parts), "Expected endpoint format host:port")
+	host := parts[0]
+	port, err := strconv.Atoi(parts[1])
+	s.Require().NoError(err, "Failed to parse port from container endpoint")
+	s.Require().NotEqual(6379, port, "Test must not use port 6379 to avoid conflicts with development instances")
 
 	// Try to connect with invalid credentials
 	valkeyClient, err = storage.NewValkeyClient(host, port, "invaliduser", "invalidpass")
