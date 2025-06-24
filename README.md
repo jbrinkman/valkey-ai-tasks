@@ -270,7 +270,8 @@ If accessing from outside the Docker network:
 {
   "mcpServers": {
     "valkey-tasks": {
-      "serverUrl": "http://localhost:8080/sse"
+      "serverUrl": "http://localhost:8080/mcp",
+      "transport": "streamable_http"
     }
   }
 }
