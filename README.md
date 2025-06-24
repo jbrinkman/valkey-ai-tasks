@@ -128,18 +128,56 @@ The project includes a Makefile with targets for running tests:
 
 The MCP server can be configured using the following environment variables:
 
+### Database Configuration
 - `VALKEY_HOST`: Valkey server hostname (default: "localhost")
 - `VALKEY_PORT`: Valkey server port (default: 6379)
 - `VALKEY_USERNAME`: Valkey username (default: "")
 - `VALKEY_PASSWORD`: Valkey password (default: "")
+
+### Server Configuration
 - `SERVER_PORT`: MCP server port (default: 8080)
+
+### Transport Configuration
+- `ENABLE_SSE`: Enable SSE transport (default: "true")
+- `SSE_ENDPOINT`: URL path for SSE transport (default: "/sse")
+- `SSE_KEEP_ALIVE`: Enable keep-alive for SSE (default: "true")
+- `SSE_KEEP_ALIVE_INTERVAL`: Interval for SSE keep-alive messages in seconds (default: 15)
+- `ENABLE_STREAMABLE_HTTP`: Enable Streamable HTTP transport (default: "false")
+- `STREAMABLE_HTTP_ENDPOINT`: URL path for Streamable HTTP transport (default: "/mcp")
+- `STREAMABLE_HTTP_HEARTBEAT_INTERVAL`: Interval for Streamable HTTP heartbeat messages in seconds (default: 30)
+- `STREAMABLE_HTTP_STATELESS`: Enable stateless mode for Streamable HTTP (default: "false")
+
+### HTTP Server Configuration
+- `SERVER_READ_TIMEOUT`: Maximum duration for reading the entire request in seconds (default: 60)
+- `SERVER_WRITE_TIMEOUT`: Maximum duration for writing the response in seconds (default: 60)
 
 ## MCP API Reference
 
-The MCP server exposes the following endpoints:
+The MCP server supports two transport protocols: Server-Sent Events (SSE) and Streamable HTTP. Each protocol exposes similar endpoints but with different interaction patterns.
 
-- `GET /mcp/list_functions`: Lists all available functions
-- `POST /mcp/invoke/{function_name}`: Invokes a function with the given parameters
+### Server-Sent Events (SSE) Endpoints
+
+- `GET /sse/list_functions`: Lists all available functions
+- `POST /sse/invoke/{function_name}`: Invokes a function with the given parameters
+
+### Streamable HTTP Endpoints
+
+- `POST /mcp`: Handles all MCP requests using JSON format
+  - For function listing: `{"method": "list_functions", "params": {}}`
+  - For function invocation: `{"method": "invoke", "params": {"function": "function_name", "params": {...}}}`
+
+### Transport Selection
+
+The server automatically selects the appropriate transport based on:
+
+1. **URL Path**: Connect to the specific endpoint for your preferred transport
+2. **Content Type**: When connecting to the root path (`/`), the server redirects based on content type:
+   - `application/json` → Streamable HTTP
+   - Other content types → SSE
+
+### Health Check
+
+- `GET /health`: Returns server health status
 
 ### Available Functions
 
@@ -172,6 +210,8 @@ The MCP server exposes the following endpoints:
 
 To configure an AI agent to use the local MCP server, add the following to your `~/.codeium/windsurf/mcp_config.json` file:
 
+#### Using SSE Transport (Default)
+
 ```json
 {
   "mcpServers": {
@@ -182,15 +222,43 @@ To configure an AI agent to use the local MCP server, add the following to your 
 }
 ```
 
-### Docker MCP Configuration
-
-When running in Docker, use the container name as the hostname:
+#### Using Streamable HTTP Transport
 
 ```json
 {
   "mcpServers": {
     "valkey-tasks": {
-      "serverUrl": "http://valkey-mcp-server:8080/sse
+      "serverUrl": "http://localhost:8080/mcp",
+      "transport": "streamable_http"
+    }
+  }
+}
+```
+
+### Docker MCP Configuration
+
+When running in Docker, use the container name as the hostname:
+
+#### Using SSE Transport (Default)
+
+```json
+{
+  "mcpServers": {
+    "valkey-tasks": {
+      "serverUrl": "http://valkey-mcp-server:8080/sse"
+    }
+  }
+}
+```
+
+#### Using Streamable HTTP Transport
+
+```json
+{
+  "mcpServers": {
+    "valkey-tasks": {
+      "serverUrl": "http://valkey-mcp-server:8080/mcp",
+      "transport": "streamable_http"
     }
   }
 }
@@ -237,7 +305,9 @@ Notes content is sanitized to prevent XSS and other security issues while preser
 
 ## Using with AI Agents
 
-AI agents can interact with this task management system through the MCP API. Here's an example of how an agent might use the API:
+AI agents can interact with this task management system through the MCP API using either SSE or Streamable HTTP transport. Here are examples for both transport protocols:
+
+### Using SSE Transport
 
 1. The agent calls `/sse/list_functions` to discover available functions
 2. The agent calls `/sse/invoke/create_project` with parameters:
@@ -285,6 +355,46 @@ AI agents can interact with this task management system through the MCP API. Her
    {
      "id": "task-456",
      "notes": "# Updated Task Notes\n\nFound a better approach:\n\n```go\nfunc betterSolution() {\n  // code here\n}\n```"
+   }
+   ```
+
+### Using Streamable HTTP Transport
+
+1. The agent sends a POST request to `/mcp` with the following JSON to discover available functions:
+   ```json
+   {
+     "method": "list_functions",
+     "params": {}
+   }
+   ```
+
+2. The agent sends a POST request to `/mcp` to create a project:
+   ```json
+   {
+     "method": "invoke",
+     "params": {
+       "function": "create_project",
+       "params": {
+         "application_id": "my-app",
+         "name": "New Feature Development",
+         "description": "Implement new features for the application",
+         "notes": "# Project Notes\n\nThis project aims to implement the following features:\n\n- Feature A\n- Feature B\n- Feature C"
+       }
+     }
+   }
+   ```
+
+3. The agent can add tasks to the project by sending a POST request to `/mcp`:
+   ```json
+   {
+     "method": "invoke",
+     "params": {
+       "function": "bulk_create_tasks",
+       "params": {
+         "project_id": "project-123",
+         "tasks_json": "[{\"title\": \"Task 1\", \"description\": \"Description for task 1\", \"priority\": \"high\", \"status\": \"pending\"}, {\"title\": \"Task 2\", \"description\": \"Description for task 2\", \"priority\": \"medium\", \"status\": \"pending\"}]"
+       }
+     }
    }
    ```
 
