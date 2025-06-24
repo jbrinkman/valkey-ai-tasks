@@ -1,0 +1,110 @@
+{
+    "plan": {
+        "id": "e0813abf-6893-43a2-9b06-793d083b39fa",
+        "application_id": "valkey-ai-tasks",
+        "name": "Add STDIO Transport Support",
+        "description": "Add support for STDIO transport to the MCP server alongside the existing SSE and Streamable HTTP transports. This will improve compatibility with older AI tools that rely on standard input/output for communication.\n\n## Design Decisions\n- Implement STDIO transport as an additional option alongside SSE and Streamable HTTP\n- Use the existing `mcp-go` module which should already support STDIO protocol\n- Allow configuration via environment variables for consistency with other transports\n- Maintain backward compatibility with existing transport methods\n- Ensure Docker compatibility for containerized deployments\n\n## Implementation Approach\n- Leverage the existing `mcp-go` module for STDIO support\n- Configure the server to handle STDIO transport when enabled\n- Add environment variables for STDIO configuration\n- Update Docker configuration to support STDIO transport\n- Create comprehensive tests for the new transport\n- Update documentation to reflect the new transport option",
+        "notes": "# STDIO Transport Implementation\n\n## GitHub Issue Reference\nThis plan implements GitHub issue #11: \"Add Support for STDIO Transport\"\nhttps://github.com/jbrinkman/valkey-ai-tasks/issues/11\n\n## Implementation Notes\n- Will leverage the existing `mcp-go` module which should support STDIO protocol\n- Will maintain compatibility with existing SSE (`/sse`) and Streamable HTTP (`/mcp`) endpoints\n- Special attention needed for Docker configuration to ensure proper STDIO handling\n\n## Key Considerations\n1. **Docker Configuration**: \n   - Need to ensure stdin/stdout are properly connected in containerized environments\n   - May require special Docker run parameters or entrypoint modifications\n\n2. **Transport Selection**:\n   - STDIO transport will need to be explicitly enabled via environment variables\n   - Will need to determine how STDIO transport coexists with HTTP-based transports\n\n3. **Testing Approach**:\n   - Integration tests will need special handling for STDIO since it's not HTTP-based\n   - May require custom test harnesses or mock clients\n\n4. **Documentation Requirements**:\n   - Clear examples for both local and Docker usage\n   - Specific instructions for configuring MCP clients to use STDIO transport\n",
+        "status": "completed",
+        "created_at": "2025-06-24T14:24:23Z",
+        "updated_at": "2025-06-24T15:36:17Z"
+    },
+    "tasks": [
+        {
+            "id": "4de32cdb-726f-4b2c-90bb-01d6c1af638f",
+            "plan_id": "e0813abf-6893-43a2-9b06-793d083b39fa",
+            "title": "Research STDIO implementation in mcp-go module",
+            "description": "Investigate how STDIO transport is implemented in the mcp-go module and identify the APIs and methods needed to enable it in the MCP server.",
+            "notes": "## STDIO Implementation Research\n\nAfter examining the codebase and the mcp-go module, I've found:\n\n1. The MCP server currently supports two transport types:\n   - SSE (Server-Sent Events) at `/sse` endpoint\n   - Streamable HTTP at `/mcp` endpoint\n\n2. Each transport type has:\n   - An enable/disable flag in ServerConfig\n   - Configuration options (endpoint, heartbeat/keepalive settings)\n   - Environment variables for configuration\n\n3. The mcp-go module (v0.32.0) is used for the core MCP server implementation.\n\n4. STDIO Transport in mcp-go:\n   - `ServeStdio(server *MCPServer, opts ...StdioOption) error`: Convenience function that creates and starts a StdioServer with os.Stdin and os.Stdout\n   - `NewStdioServer(server *MCPServer) *StdioServer`: Creates a new stdio server wrapper around an MCPServer\n   - Configuration options available through StdioOption:\n     - `WithErrorLogger(logger *log.Logger)`: Sets a custom error logger\n     - `WithStdioContextFunc(fn StdioContextFunc)`: Sets a function to modify the context\n\n5. Implementation approach:\n   - Add STDIO configuration to ServerConfig struct\n   - Add environment variable support for STDIO configuration\n   - Implement STDIO transport initialization in the Start method\n   - Update Dockerfile to support STDIO transport\n   - Ensure proper handling of HTTP and STDIO transports when both are enabled\n\nThis research provides all the necessary information to implement STDIO transport support in the MCP server.\n",
+            "status": "completed",
+            "priority": "high",
+            "order": 0,
+            "created_at": "2025-06-24T14:24:42Z",
+            "updated_at": "2025-06-24T15:02:14Z"
+        },
+        {
+            "id": "37f61107-916e-40cd-8709-1f017bf57209",
+            "plan_id": "e0813abf-6893-43a2-9b06-793d083b39fa",
+            "title": "Update server initialization for STDIO transport",
+            "description": "Modify the MCP server initialization code to support STDIO transport alongside the existing SSE and Streamable HTTP transports.",
+            "notes": "Updated server initialization for STDIO transport:\n\n1. Modified the `ServerConfig` struct to include STDIO transport configuration:\n   - Added `EnableSTDIO` boolean flag\n   - Added `STDIOErrorLog` boolean flag for error logging\n\n2. Updated the `Start` method to initialize STDIO transport:\n   - Added conditional initialization based on `EnableSTDIO` flag\n   - Used `ServeStdio` function from mcp-go module\n   - Implemented error logging configuration\n   - Added blocking behavior when STDIO is the only enabled transport\n\n3. Updated the transport selection handler to handle STDIO transport:\n   - Added STDIO transport presence check\n   - Updated HTTP response logic when STDIO is enabled\n   - Maintained backward compatibility with existing transports\n\n4. Added a `GetConfig` method to the MCPGoServer struct for testing purposes\n\nThe implementation ensures that STDIO transport can run alongside HTTP-based transports or as a standalone transport option.\n",
+            "status": "completed",
+            "priority": "high",
+            "order": 1,
+            "created_at": "2025-06-24T14:24:42Z",
+            "updated_at": "2025-06-24T15:02:22Z"
+        },
+        {
+            "id": "c3e4d5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f",
+            "plan_id": "e0813abf-6893-43a2-9b06-793d083b39fa",
+            "title": "Add environment variable handling for STDIO",
+            "description": "Add environment variable support for STDIO transport configuration, including enable/disable flags and error logging options.",
+            "notes": "Added environment variable handling for STDIO transport:\n\n1. Updated the environment variable parsing in the server initialization:\n   - Added `ENABLE_STDIO` boolean environment variable (default: false)\n   - Added `STDIO_ERROR_LOG` boolean environment variable (default: true)\n\n2. Implemented proper default values for STDIO configuration:\n   - STDIO transport is disabled by default\n   - Error logging is enabled by default when STDIO is enabled\n\n3. Updated the environment variable documentation in comments\n\n4. Ensured consistent naming conventions with existing environment variables\n\nThe implementation allows users to easily enable and configure STDIO transport through environment variables, maintaining consistency with how other transports are configured.\n",
+            "status": "completed",
+            "priority": "high",
+            "order": 2,
+            "created_at": "2025-06-24T14:24:42Z",
+            "updated_at": "2025-06-24T15:02:31Z"
+        },
+        {
+            "id": "8a7b6c5d-4e3f-2a1b-0c9d-8e7f6a5b4c3d",
+            "plan_id": "e0813abf-6893-43a2-9b06-793d083b39fa",
+            "title": "Update Dockerfile for STDIO support",
+            "description": "Update the Dockerfile to include STDIO transport configuration and document the requirements for running containers with STDIO transport enabled.",
+            "notes": "Updated Dockerfile for STDIO transport support:\n\n1. Added environment variables for STDIO transport:\n   - Set `ENABLE_STDIO=false` as the default\n   - Maintained existing transport defaults\n\n2. Added comments explaining STDIO transport usage:\n   - Noted that the container must be run with the `-i` flag for STDIO transport\n   - Explained the purpose of interactive mode for STDIO\n\n3. Ensured backward compatibility with existing Docker configurations\n\nThe Dockerfile now includes proper defaults for STDIO transport and documentation on how to use it in containerized environments.\n",
+            "status": "completed",
+            "priority": "high",
+            "order": 3,
+            "created_at": "2025-06-24T14:24:42Z",
+            "updated_at": "2025-06-24T15:02:40Z"
+        },
+        {
+            "id": "2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d",
+            "plan_id": "e0813abf-6893-43a2-9b06-793d083b39fa",
+            "title": "Create Docker Compose configuration for STDIO",
+            "description": "Create Docker Compose configurations that demonstrate how to run the MCP server with STDIO transport enabled, including proper container settings for stdin/stdout.",
+            "notes": "Created Docker Compose configurations for STDIO transport:\n\n1. Updated the main `docker-compose.yml` file:\n   - Added environment variables for all transport types\n   - Added a new service `mcpserver-stdio` configured for STDIO transport\n   - Set appropriate environment variables for the STDIO service\n   - Added `stdin_open: true` and `tty: true` flags for proper STDIO support\n\n2. Created a new `docker-compose.stdio.yml` file:\n   - Minimal example focused on STDIO transport\n   - Properly configured with `stdin_open` and `tty` flags\n   - Set appropriate environment variables\n   - Included comments explaining the configuration\n\nThese Docker Compose configurations provide clear examples of how to run the MCP server with STDIO transport enabled in containerized environments.\n",
+            "status": "completed",
+            "priority": "medium",
+            "order": 4,
+            "created_at": "2025-06-24T14:24:42Z",
+            "updated_at": "2025-06-24T15:02:51Z"
+        },
+        {
+            "id": "34300d46-c1df-486b-beec-ba9efa7c9578",
+            "plan_id": "e0813abf-6893-43a2-9b06-793d083b39fa",
+            "title": "Implement integration tests for STDIO transport",
+            "description": "Create integration tests that verify STDIO transport functionality, including server startup, configuration, and proper handling of multiple transports.",
+            "notes": "Implemented integration tests for STDIO transport:\n\n1. Updated the `setupTestServer` helper function:\n   - Added `enableSTDIO` parameter\n   - Updated environment variable handling\n   - Fixed cleanup function to restore STDIO environment variables\n\n2. Added a dedicated `TestSTDIOTransport` test:\n   - Verified server startup with STDIO enabled\n   - Checked configuration correctness\n   - Tested combinations of transports\n\n3. Updated existing tests:\n   - Fixed all calls to `setupTestServer` to include STDIO parameter\n   - Added a test case with both HTTP and STDIO transports enabled\n   - Added configuration verification through the new GetConfig method\n",
+            "status": "completed",
+            "priority": "medium",
+            "order": 5,
+            "created_at": "2025-06-24T14:24:42Z",
+            "updated_at": "2025-06-24T15:27:01Z"
+        },
+        {
+            "id": "df042903-b4aa-4b54-81ad-2c7dabecf016",
+            "plan_id": "e0813abf-6893-43a2-9b06-793d083b39fa",
+            "title": "Update README with STDIO transport documentation",
+            "description": "Update the project documentation to include information about STDIO transport, configuration options, and usage examples.",
+            "notes": "Updated the README.md with comprehensive STDIO transport documentation:\n- Added a new section explaining STDIO transport and its configuration\n- Added client configuration examples for STDIO transport\n- Added Docker-specific instructions for using STDIO transport\n- Included examples of docker-compose usage with STDIO transport\n- Added explanations of the required Docker flags (-i, stdin_open, tty)\n- Ensured consistency with existing transport documentation\n",
+            "status": "completed",
+            "priority": "medium",
+            "order": 6,
+            "created_at": "2025-06-24T14:24:42Z",
+            "updated_at": "2025-06-24T15:27:10Z"
+        },
+        {
+            "id": "511e0ef9-8442-41b6-9d74-3d0e0a7c9c9f",
+            "plan_id": "e0813abf-6893-43a2-9b06-793d083b39fa",
+            "title": "Add client configuration examples for STDIO",
+            "description": "Create examples showing how to configure MCP clients to use STDIO transport, both for local and Docker environments.",
+            "notes": "Added client configuration examples for STDIO transport:\n- Included JSON configuration examples for STDIO transport in the README\n- Added examples for both local and Docker environments\n- Demonstrated how to configure clients without serverUrl for STDIO transport\n- Included command-line examples for running Docker containers with STDIO support\n- Documented the differences between HTTP-based transports and STDIO transport configuration\n",
+            "status": "completed",
+            "priority": "medium",
+            "order": 7,
+            "created_at": "2025-06-24T14:24:42Z",
+            "updated_at": "2025-06-24T15:27:22Z"
+        }
+    ]
+}
