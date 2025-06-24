@@ -1,4 +1,4 @@
-FROM golang:1.24-alpine AS builder
+FROM golang:1.24 AS builder
 
 WORKDIR /app
 
@@ -12,13 +12,13 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o mcpserver ./cmd/mcpserver
+RUN go build -o mcpserver ./cmd/mcpserver
 
-# Create a minimal production image
-FROM alpine:latest
+# Create a production image
+FROM ubuntu:22.04
 
-# Add CA certificates for HTTPS
-RUN apk --no-cache add ca-certificates
+# Add CA certificates for HTTPS and other required packages
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
