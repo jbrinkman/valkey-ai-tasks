@@ -19,15 +19,7 @@ import (
 	"github.com/jbrinkman/valkey-ai-tasks/internal/utils/markdown"
 )
 
-// TransportType represents the type of transport protocol
-type TransportType string
 
-const (
-	// TransportSSE represents Server-Sent Events transport
-	TransportSSE TransportType = "sse"
-	// TransportStreamableHTTP represents Streamable HTTP transport
-	TransportStreamableHTTP TransportType = "streamable-http"
-)
 
 // ServerConfig holds configuration for the MCP server
 type ServerConfig struct {

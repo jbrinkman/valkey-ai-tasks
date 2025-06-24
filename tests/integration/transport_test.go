@@ -47,7 +47,7 @@ func (s *TransportTestSuite) setupTestServer(enableSSE bool, enableStreamableHTT
 	}()
 
 	// Give the server time to start
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	// Return a cleanup function
 	cleanup := func() {
