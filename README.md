@@ -130,7 +130,7 @@ The MCP server can be configured using the following environment variables:
 
 ### Database Configuration
 - `VALKEY_HOST`: Valkey server hostname (default: "localhost")
-- `VALKEY_PORT`: Valkey server port (default: 6379)
+- `VALKEY_PORT`: Valkey server port (default: 16379)
 - `VALKEY_USERNAME`: Valkey username (default: "")
 - `VALKEY_PASSWORD`: Valkey password (default: "")
 
