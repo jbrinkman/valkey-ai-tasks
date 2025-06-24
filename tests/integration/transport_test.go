@@ -24,7 +24,7 @@ type TransportTestSuite struct {
 }
 
 // setupTestServer creates and starts an MCP server with the specified configuration
-func (s *TransportTestSuite) setupTestServer(enableSSE bool, enableStreamableHTTP bool) (*mcp.MCPGoServer, int, func()) {
+func (s *TransportTestSuite) setupTestServer(enableSSE bool, enableStreamableHTTP bool, enableSTDIO bool) (*mcp.MCPGoServer, int, func()) {
 	// Get repositories
 	planRepo := s.GetPlanRepository()
 	taskRepo := s.GetTaskRepository()
@@ -32,10 +32,12 @@ func (s *TransportTestSuite) setupTestServer(enableSSE bool, enableStreamableHTT
 	// Set environment variables for the test
 	originalSSE := os.Getenv("ENABLE_SSE")
 	originalStreamableHTTP := os.Getenv("ENABLE_STREAMABLE_HTTP")
+	originalSTDIO := os.Getenv("ENABLE_STDIO")
 
 	// Set the environment variables for this test
 	os.Setenv("ENABLE_SSE", fmt.Sprintf("%t", enableSSE))
 	os.Setenv("ENABLE_STREAMABLE_HTTP", fmt.Sprintf("%t", enableStreamableHTTP))
+	os.Setenv("ENABLE_STDIO", fmt.Sprintf("%t", enableSTDIO))
 
 	// Create MCP server with random port
 	mcpServer, port := utils.CreateTestMCPServer(s.T(), planRepo, taskRepo)
@@ -64,6 +66,12 @@ func (s *TransportTestSuite) setupTestServer(enableSSE bool, enableStreamableHTT
 			os.Unsetenv("ENABLE_STREAMABLE_HTTP")
 		}
 
+		if originalSTDIO != "" {
+			os.Setenv("ENABLE_STDIO", originalSTDIO)
+		} else {
+			os.Unsetenv("ENABLE_STDIO")
+		}
+
 		// We don't need to stop the server explicitly as it will be stopped
 		// when the test function exits and the goroutine is terminated
 	}
@@ -77,31 +85,42 @@ func (s *TransportTestSuite) TestHealthEndpoint() {
 		name                 string
 		enableSSE            bool
 		enableStreamableHTTP bool
+		enableSTDIO         bool
 		expectedStatus       int
 	}{
 		{
-			name:                 "Both transports enabled",
+			name:                 "Both HTTP transports enabled",
 			enableSSE:            true,
 			enableStreamableHTTP: true,
+			enableSTDIO:         false,
 			expectedStatus:       http.StatusOK,
 		},
 		{
 			name:                 "Only SSE enabled",
 			enableSSE:            true,
 			enableStreamableHTTP: false,
+			enableSTDIO:         false,
 			expectedStatus:       http.StatusOK,
 		},
 		{
 			name:                 "Only Streamable HTTP enabled",
 			enableSSE:            false,
 			enableStreamableHTTP: true,
+			enableSTDIO:         false,
+			expectedStatus:       http.StatusOK,
+		},
+		{
+			name:                 "HTTP and STDIO enabled",
+			enableSSE:            true,
+			enableStreamableHTTP: false,
+			enableSTDIO:         true,
 			expectedStatus:       http.StatusOK,
 		},
 	}
 
 	for _, tc := range testCases {
 		s.T().Run(tc.name, func(t *testing.T) {
-			_, port, cleanup := s.setupTestServer(tc.enableSSE, tc.enableStreamableHTTP)
+			_, port, cleanup := s.setupTestServer(tc.enableSSE, tc.enableStreamableHTTP, tc.enableSTDIO)
 			defer cleanup()
 
 			// Test the health endpoint
@@ -123,7 +142,7 @@ func (s *TransportTestSuite) TestHealthEndpoint() {
 // TestRootEndpointRedirection tests the root endpoint redirection based on content type
 func (s *TransportTestSuite) TestRootEndpointRedirection() {
 	// Setup server with both transports enabled
-	_, port, cleanup := s.setupTestServer(true, true)
+	_, port, cleanup := s.setupTestServer(true, true, false)
 	defer cleanup()
 
 	testCases := []struct {
@@ -184,7 +203,7 @@ func (s *TransportTestSuite) TestRootEndpointRedirection() {
 // TestSSETransport tests the SSE transport functionality
 func (s *TransportTestSuite) TestSSETransport() {
 	// Setup server with only SSE enabled
-	_, port, cleanup := s.setupTestServer(true, false)
+	_, port, cleanup := s.setupTestServer(true, false, false)
 	defer cleanup()
 
 	// Connect directly to the SSE endpoint
@@ -205,7 +224,7 @@ func (s *TransportTestSuite) TestSSETransport() {
 // TestStreamableHTTPTransport tests the Streamable HTTP transport functionality
 func (s *TransportTestSuite) TestStreamableHTTPTransport() {
 	// Setup server with only Streamable HTTP enabled
-	_, port, cleanup := s.setupTestServer(false, true)
+	_, port, cleanup := s.setupTestServer(false, true, false)
 	defer cleanup()
 
 	// Create a simple JSON request
@@ -246,7 +265,7 @@ func (s *TransportTestSuite) TestStreamableHTTPTransport() {
 // TestConcurrentConnections tests both transports with concurrent connections
 func (s *TransportTestSuite) TestConcurrentConnections() {
 	// Setup server with both transports enabled
-	_, port, cleanup := s.setupTestServer(true, true)
+	_, port, cleanup := s.setupTestServer(true, true, false)
 	defer cleanup()
 
 	// Number of concurrent connections to test
@@ -325,6 +344,28 @@ func (s *TransportTestSuite) TestConcurrentConnections() {
 	case <-time.After(10 * time.Second):
 		s.T().Log("Timeout waiting for concurrent connections to complete")
 	}
+}
+
+// TestSTDIOTransport tests the STDIO transport functionality
+func (s *TransportTestSuite) TestSTDIOTransport() {
+	// For STDIO transport, we can't use the normal HTTP-based testing approach
+	// Instead, we'll verify that the server can start with STDIO enabled
+	// and that it properly handles the configuration
+
+	// Setup server with only STDIO enabled
+	server, _, cleanup := s.setupTestServer(false, false, true)
+	defer cleanup()
+
+	// Verify that the server has STDIO enabled in its configuration
+	config := server.GetConfig()
+	assert.True(s.T(), config.EnableSTDIO, "STDIO transport should be enabled")
+	assert.False(s.T(), config.EnableSSE, "SSE transport should be disabled")
+	assert.False(s.T(), config.EnableStreamableHTTP, "Streamable HTTP transport should be disabled")
+
+	// Note: We can't actually test the STDIO functionality in an integration test
+	// as it would require capturing stdin/stdout which is difficult in a test environment
+	// Instead, we rely on the fact that if the configuration is correct, the mcp-go
+	// library will handle the STDIO transport correctly
 }
 
 // TestTransportSuite runs the transport test suite

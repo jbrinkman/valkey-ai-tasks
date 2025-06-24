@@ -35,5 +35,12 @@ ENV VALKEY_USERNAME=""
 ENV VALKEY_PASSWORD=""
 ENV SERVER_PORT=8080
 
-# Run the server
+# Default transport configuration
+ENV ENABLE_SSE=true
+ENV ENABLE_STREAMABLE_HTTP=false
+ENV ENABLE_STDIO=false
+
+# Run the server with appropriate configuration
+# Note: When using STDIO transport, container must be run with -i (interactive) flag
+# Example: docker run -i --rm mcpserver
 CMD ["./mcpserver"]

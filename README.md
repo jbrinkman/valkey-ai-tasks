@@ -235,6 +235,53 @@ To configure an AI agent to use the local MCP server, add the following to your 
 }
 ```
 
+#### Using STDIO Transport
+
+STDIO transport allows the MCP server to communicate via standard input/output, which is useful for legacy AI tools that rely on stdin/stdout for communication.
+
+For agentic tools that need to start and manage the MCP server process, use a configuration like this:
+
+```json
+{
+  "mcpServers": {
+    "valkey-tasks": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e", "ENABLE_SSE=false",
+        "-e", "ENABLE_STREAMABLE_HTTP=false",
+        "-e", "ENABLE_STDIO=true",
+        "valkey-mcp-server"
+      ],
+      "transport": "stdio"
+    }
+  }
+}
+```
+
+Alternatively, for a local binary:
+
+```json
+{
+  "mcpServers": {
+    "valkey-tasks": {
+      "command": "/path/to/mcpserver",
+      "args": [],
+      "env": {
+        "ENABLE_SSE": "false",
+        "ENABLE_STREAMABLE_HTTP": "false",
+        "ENABLE_STDIO": "true"
+      },
+      "transport": "stdio"
+    }
+  }
+}
+```
+
+When using STDIO transport, the server must be started with the `ENABLE_STDIO=true` environment variable, and the client must be configured to use the `stdio` transport type. No `serverUrl` is required for STDIO transport as communication happens directly through stdin/stdout.
+
 ### Docker MCP Configuration
 
 When running in Docker, use the container name as the hostname:
@@ -276,6 +323,49 @@ If accessing from outside the Docker network:
   }
 }
 ```
+
+#### Using STDIO Transport with Docker
+
+For Docker environments, agentic tools can use this configuration to start and manage the MCP server:
+
+```json
+{
+  "mcpServers": {
+    "valkey-tasks": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e", "ENABLE_SSE=false",
+        "-e", "ENABLE_STREAMABLE_HTTP=false",
+        "-e", "ENABLE_STDIO=true",
+        "valkey-mcp-server"
+      ],
+      "transport": "stdio"
+    }
+  }
+}
+```
+
+For manual testing or development, you can run the container directly:
+
+```bash
+# Run the MCP server with STDIO transport enabled
+docker run -i --rm \
+  -e ENABLE_SSE=false \
+  -e ENABLE_STREAMABLE_HTTP=false \
+  -e ENABLE_STDIO=true \
+  valkey-mcp-server
+```
+
+Alternatively, you can use the provided `docker-compose.stdio.yml` file:
+
+```bash
+docker-compose -f docker-compose.stdio.yml up mcpserver-stdio
+```
+
+Note that the `-i` flag (or `stdin_open: true` in docker-compose) is essential for STDIO transport to work properly, as it keeps stdin open for communication.
 
 ## Notes Functionality
 

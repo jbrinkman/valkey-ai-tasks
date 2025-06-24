@@ -1,3 +1,5 @@
+version: '3'
+
 services:
   valkey:
     image: valkey/valkey:latest
@@ -12,26 +14,7 @@ services:
       timeout: 5s
       retries: 5
 
-  mcpserver:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
-    environment:
-      - VALKEY_HOST=valkey
-      - VALKEY_PORT=6379
-      - VALKEY_USERNAME=
-      - VALKEY_PASSWORD=
-      - SERVER_PORT=8080
-      - ENABLE_SSE=true
-      - ENABLE_STREAMABLE_HTTP=false
-      - ENABLE_STDIO=false
-    depends_on:
-      valkey:
-        condition: service_healthy
-    restart: unless-stopped
-    
+  # STDIO-only MCP server
   mcpserver-stdio:
     build:
       context: .
