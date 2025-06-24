@@ -229,7 +229,7 @@ To configure an AI agent to use the local MCP server, add the following to your 
   "mcpServers": {
     "valkey-tasks": {
       "serverUrl": "http://localhost:8080/mcp",
-      "transport": "streamable_http"
+      "transport": "streamable-http"
     }
   }
 }
@@ -258,7 +258,7 @@ When running in Docker, use the container name as the hostname:
   "mcpServers": {
     "valkey-tasks": {
       "serverUrl": "http://valkey-mcp-server:8080/mcp",
-      "transport": "streamable_http"
+      "transport": "streamable-http"
     }
   }
 }
@@ -271,7 +271,7 @@ If accessing from outside the Docker network:
   "mcpServers": {
     "valkey-tasks": {
       "serverUrl": "http://localhost:8080/mcp",
-      "transport": "streamable_http"
+      "transport": "streamable-http"
     }
   }
 }
