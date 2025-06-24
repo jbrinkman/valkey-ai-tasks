@@ -41,6 +41,11 @@ type ServerConfig struct {
 	// StreamableHTTPStateless controls whether the Streamable HTTP transport is stateless
 	StreamableHTTPStateless bool
 
+	// EnableSTDIO controls whether the STDIO transport is enabled
+	EnableSTDIO bool
+	// STDIOErrorLog controls whether to log errors to stderr
+	STDIOErrorLog bool
+
 	// ServerReadTimeout is the maximum duration for reading the entire request in seconds
 	ServerReadTimeout int
 	// ServerWriteTimeout is the maximum duration for writing the response in seconds
@@ -86,16 +91,20 @@ func getServerConfigFromEnv() ServerConfig {
 	// Default configuration
 	config := ServerConfig{
 		// SSE configuration
-		EnableSSE:             true,
-		SSEEndpoint:           "/sse",
-		SSEKeepAlive:          true,
-		SSEKeepAliveInterval:  15,
+		EnableSSE:            true,
+		SSEEndpoint:          "/sse",
+		SSEKeepAlive:         true,
+		SSEKeepAliveInterval: 30,
 
 		// Streamable HTTP configuration
 		EnableStreamableHTTP:          false,
 		StreamableHTTPEndpoint:        "/mcp",
 		StreamableHTTPHeartbeatInterval: 30,
 		StreamableHTTPStateless:       false,
+
+		// STDIO configuration
+		EnableSTDIO:    false,
+		STDIOErrorLog:  true,
 
 		// Server configuration
 		ServerReadTimeout:  60,
@@ -140,6 +149,15 @@ func getServerConfigFromEnv() ServerConfig {
 		config.StreamableHTTPStateless = strings.ToLower(val) == "true"
 	}
 
+	// STDIO configuration from environment variables
+	if val := os.Getenv("ENABLE_STDIO"); val != "" {
+		config.EnableSTDIO = strings.ToLower(val) == "true"
+	}
+
+	if val := os.Getenv("STDIO_ERROR_LOG"); val != "" {
+		config.STDIOErrorLog = strings.ToLower(val) == "true"
+	}
+
 	// Server configuration from environment variables
 	if val := os.Getenv("SERVER_READ_TIMEOUT"); val != "" {
 		if timeout, err := strconv.Atoi(val); err == nil && timeout > 0 {
@@ -168,7 +186,10 @@ func (s *MCPGoServer) transportSelectionHandler(w http.ResponseWriter, r *http.R
 	// Check content-type header for transport selection
 	contentType := r.Header.Get("Content-Type")
 
-	// Default to SSE if both transports are enabled
+	// If STDIO is enabled, add it to the response information
+	stdioEnabled := s.config.EnableSTDIO
+
+	// Default to SSE if multiple transports are enabled
 	if s.config.EnableSSE && s.config.EnableStreamableHTTP {
 		// If content-type indicates JSON, use Streamable HTTP
 		if strings.Contains(contentType, "application/json") {
@@ -180,7 +201,7 @@ func (s *MCPGoServer) transportSelectionHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// If only one transport is enabled, redirect to it
+	// If only one HTTP transport is enabled, redirect to it
 	if s.config.EnableSSE {
 		http.Redirect(w, r, s.config.SSEEndpoint, http.StatusTemporaryRedirect)
 		return
@@ -191,10 +212,27 @@ func (s *MCPGoServer) transportSelectionHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// If only STDIO is enabled, show information about it
+	if stdioEnabled {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "ok",
+			"message": "This server is configured for STDIO transport only. HTTP endpoints are not available.",
+			"transports": []string{"stdio"},
+		})
+		return
+	}
+
 	// If we get here, no transports are enabled (should not happen due to earlier check)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusServiceUnavailable)
 	json.NewEncoder(w).Encode(map[string]string{"error": "No transport protocols are enabled on this server"})
+}
+
+// GetConfig returns the current server configuration
+func (s *MCPGoServer) GetConfig() ServerConfig {
+	return s.config
 }
 
 // Start starts the MCP server using the configured transports
@@ -202,8 +240,27 @@ func (s *MCPGoServer) Start(port int) error {
 	log.Printf("Starting MCP server on port %d", port)
 
 	// Check if at least one transport is enabled
-	if !s.config.EnableSSE && !s.config.EnableStreamableHTTP {
-		return fmt.Errorf("no transport protocols enabled, enable at least one of SSE or Streamable HTTP")
+	if !s.config.EnableSSE && !s.config.EnableStreamableHTTP && !s.config.EnableSTDIO {
+		return fmt.Errorf("no transport protocols enabled, enable at least one of SSE, Streamable HTTP, or STDIO")
+	}
+
+	// If STDIO is enabled, handle it separately as it's not compatible with HTTP server
+	if s.config.EnableSTDIO {
+		log.Printf("Enabling STDIO transport")
+		
+		// Only run STDIO if it's the only transport enabled
+		if !s.config.EnableSSE && !s.config.EnableStreamableHTTP {
+			// Configure STDIO options
+			var stdioOptions []server.StdioOption
+			
+			// Add error logger if enabled
+			if s.config.STDIOErrorLog {
+				stdioOptions = append(stdioOptions, server.WithErrorLogger(log.Default()))
+			}
+			
+			// Start STDIO server - this will block until terminated
+			return server.ServeStdio(s.server, stdioOptions...)
+		}
 	}
 
 	// Create a new HTTP server mux for routing
