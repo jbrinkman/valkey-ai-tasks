@@ -20,7 +20,7 @@ services:
       - "8080:8080"
     environment:
       - VALKEY_HOST=valkey
-      - VALKEY_PORT=16379
+      - VALKEY_PORT=6379
       - VALKEY_USERNAME=
       - VALKEY_PASSWORD=
       - SERVER_PORT=8080
@@ -38,7 +38,7 @@ services:
       dockerfile: Dockerfile
     environment:
       - VALKEY_HOST=valkey
-      - VALKEY_PORT=16379
+      - VALKEY_PORT=6379
       - VALKEY_USERNAME=
       - VALKEY_PASSWORD=
       - ENABLE_SSE=false
