@@ -10,13 +10,19 @@ on:
       - '**.md'
       - 'docs/**'
       - '.github/*.md'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 1.0.0)'
+        required: true
+        type: string
 
 jobs:
   semantic-release:
     runs-on: ubuntu-latest
     outputs:
-      new_release_published: ${{ steps.semantic.outputs.new_release_published }}
-      new_release_version: ${{ steps.semantic.outputs.new_release_version }}
+      new_release_published: ${{ steps.semantic.outputs.new_release_published || steps.manual-version.outputs.new_release_published }}
+      new_release_version: ${{ steps.semantic.outputs.new_release_version || steps.manual-version.outputs.new_release_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,11 +36,27 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Set manual version
+        id: manual-version
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "new_release_published=true" >> $GITHUB_OUTPUT
+          echo "new_release_version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          # Update package.json version
+          npm version ${{ github.event.inputs.version }} --no-git-tag-version
+          # Create a tag for this version
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag -a v${{ github.event.inputs.version }} -m "Release v${{ github.event.inputs.version }}"
+          git push origin v${{ github.event.inputs.version }}
+
       - name: Install dependencies
+        if: github.event_name != 'workflow_dispatch'
         run: npm install -g semantic-release @semantic-release/git @semantic-release/changelog @semantic-release/github
 
       - name: Semantic Release
         id: semantic
+        if: github.event_name != 'workflow_dispatch'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
