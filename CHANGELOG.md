@@ -1,4 +1,26 @@
-## 1.0.0 (2025-06-27)
+## [1.0.1](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.0.0...v1.0.1) (2025-06-27)
+
+
+
+# [1.0.0](https://github.com/jbrinkman/valkey-ai-tasks/compare/da77265dcb897e7830450c1ee3b0a1d313b21659...v1.0.0) (2025-06-27)
+
+
+### Bug Fixes
+
+* add --fail-on-empty=false to commitlint command ([7d3d387](https://github.com/jbrinkman/valkey-ai-tasks/commit/7d3d38737129835c678bc00e65aa9064317475e8))
+* address PR review comments ([f1b7c69](https://github.com/jbrinkman/valkey-ai-tasks/commit/f1b7c699226cb664bbe2c50ca5d19cb52f8ed8b1))
+* improve semantic release logic and fix build-and-push job condition ([3a9dd77](https://github.com/jbrinkman/valkey-ai-tasks/commit/3a9dd77f6793a4490ed3979758896b920726dbf3))
+* increase server startup delay in transport test and remove unused transport type constants ([52ad98a](https://github.com/jbrinkman/valkey-ai-tasks/commit/52ad98a06a93315b11b272272d01a4a870b433c2))
+* iterate over map keys directly instead of using range with unused value ([37b7aca](https://github.com/jbrinkman/valkey-ai-tasks/commit/37b7aca4d35ec2b8bdf8fd0d6369c1033b98f3b0))
+* prevent test suite from using port 6379 to avoid conflicts with dev instances ([059862d](https://github.com/jbrinkman/valkey-ai-tasks/commit/059862d5aa592b240439b782ab14ece764e9d772))
+* remove fail-on-empty flag from commitlint validation ([5db064a](https://github.com/jbrinkman/valkey-ai-tasks/commit/5db064a9a62ce5c5415203e6dbb324ec7783eaa6))
+* replace --extends with --config in semantic-release command ([df451b9](https://github.com/jbrinkman/valkey-ai-tasks/commit/df451b90ee7d73e8b38b379406b9313dca86c422))
+* update .github/workflows/commit-lint.yml ([0196c41](https://github.com/jbrinkman/valkey-ai-tasks/commit/0196c417a0200bcfc8e6ebea0f4107b539390db2))
+* update .github/workflows/container-build.yml ([fb723ee](https://github.com/jbrinkman/valkey-ai-tasks/commit/fb723eeeca46a8540d8740a0c078d1687ea68f70))
+* update MCP server URLs to use /sse endpoint instead of /mcp ([5df56ac](https://github.com/jbrinkman/valkey-ai-tasks/commit/5df56ac858b9ddfad1c5abc1cbef2cbcb6c06404))
+* update transport config to use streamable-http instead of streamable_http ([6e66b95](https://github.com/jbrinkman/valkey-ai-tasks/commit/6e66b95d7d18ef1f333f1bcd5d60ad1babb144fb))
+* update Valkey port from 16379 to 6379 in docker-compose configuration ([875c596](https://github.com/jbrinkman/valkey-ai-tasks/commit/875c59652aa235cfd9adf779b93522af412bf3d0))
+
 
 ### Features
 
@@ -26,50 +48,5 @@
 * implement CI/CD workflow for container image builds and releases ([8fdb287](https://github.com/jbrinkman/valkey-ai-tasks/commit/8fdb287b370a1d09ba0283f382bcee953cd83eca)), closes [#18](https://github.com/jbrinkman/valkey-ai-tasks/issues/18)
 * switch to SSE server and update tool descriptions for feature planning focus ([e24d8af](https://github.com/jbrinkman/valkey-ai-tasks/commit/e24d8afb04480952f18ad6019467ba34dd8de366))
 
-### Bug Fixes
 
-* add --fail-on-empty=false to commitlint command ([7d3d387](https://github.com/jbrinkman/valkey-ai-tasks/commit/7d3d38737129835c678bc00e65aa9064317475e8))
-* address PR review comments ([f1b7c69](https://github.com/jbrinkman/valkey-ai-tasks/commit/f1b7c699226cb664bbe2c50ca5d19cb52f8ed8b1))
-* improve semantic release logic and fix build-and-push job condition ([3a9dd77](https://github.com/jbrinkman/valkey-ai-tasks/commit/3a9dd77f6793a4490ed3979758896b920726dbf3))
-* increase server startup delay in transport test and remove unused transport type constants ([52ad98a](https://github.com/jbrinkman/valkey-ai-tasks/commit/52ad98a06a93315b11b272272d01a4a870b433c2))
-* iterate over map keys directly instead of using range with unused value ([37b7aca](https://github.com/jbrinkman/valkey-ai-tasks/commit/37b7aca4d35ec2b8bdf8fd0d6369c1033b98f3b0))
-* prevent test suite from using port 6379 to avoid conflicts with dev instances ([059862d](https://github.com/jbrinkman/valkey-ai-tasks/commit/059862d5aa592b240439b782ab14ece764e9d772))
-* remove fail-on-empty flag from commitlint validation ([5db064a](https://github.com/jbrinkman/valkey-ai-tasks/commit/5db064a9a62ce5c5415203e6dbb324ec7783eaa6))
-* replace --extends with --config in semantic-release command ([df451b9](https://github.com/jbrinkman/valkey-ai-tasks/commit/df451b90ee7d73e8b38b379406b9313dca86c422))
-* update .github/workflows/commit-lint.yml ([0196c41](https://github.com/jbrinkman/valkey-ai-tasks/commit/0196c417a0200bcfc8e6ebea0f4107b539390db2))
-* update .github/workflows/container-build.yml ([fb723ee](https://github.com/jbrinkman/valkey-ai-tasks/commit/fb723eeeca46a8540d8740a0c078d1687ea68f70))
-* update MCP server URLs to use /sse endpoint instead of /mcp ([5df56ac](https://github.com/jbrinkman/valkey-ai-tasks/commit/5df56ac858b9ddfad1c5abc1cbef2cbcb6c06404))
-* update transport config to use streamable-http instead of streamable_http ([6e66b95](https://github.com/jbrinkman/valkey-ai-tasks/commit/6e66b95d7d18ef1f333f1bcd5d60ad1babb144fb))
-* update Valkey port from 16379 to 6379 in docker-compose configuration ([875c596](https://github.com/jbrinkman/valkey-ai-tasks/commit/875c59652aa235cfd9adf779b93522af412bf3d0))
 
-### Documentation
-
-* add example agent prompts for Valkey MCP task management system ([768139e](https://github.com/jbrinkman/valkey-ai-tasks/commit/768139e1da5c5dea0fbb31cbc939ecf67ff2fe71))
-* add MCP configuration guide and agent usage examples to README ([b04aae0](https://github.com/jbrinkman/valkey-ai-tasks/commit/b04aae0fdc77bc5ae5bdcd633834b66e5a4eb198))
-
-### Code Refactoring
-
-* consolidate integration tests into test suites ([051de85](https://github.com/jbrinkman/valkey-ai-tasks/commit/051de85080afe2ab383794323c95002c8b9baa6e))
-* consolidate notes tools into server_mcp.go and add repository tests ([dc41685](https://github.com/jbrinkman/valkey-ai-tasks/commit/dc41685d6b1449c9e76ab02d28a2fb4152031b38))
-* consolidate plan repository tests into single test suite ([61dee00](https://github.com/jbrinkman/valkey-ai-tasks/commit/61dee009c9d5c85738c87221060a44415e70b944))
-* Extract plan status validation into shared helper function ([a485fcb](https://github.com/jbrinkman/valkey-ai-tasks/commit/a485fcb362c0ab14ef4ec161c34a07c6c5a509c2))
-* remove mock repositories and unused Valkey default port constant ([5eef8ca](https://github.com/jbrinkman/valkey-ai-tasks/commit/5eef8ca78e35f13e2f6902a2c3b7f3247bf875dd))
-* remove unused project repository and example test files ([5f7a876](https://github.com/jbrinkman/valkey-ai-tasks/commit/5f7a876f9c42c57585a24afa0e10005c203b94fa))
-* rename project terminology to plan terminology throughout codebase ([988390e](https://github.com/jbrinkman/valkey-ai-tasks/commit/988390e200b8ffe5f46dca0882c493e5ced25c54))
-* rename project to plan throughout MCP server implementation ([d932f65](https://github.com/jbrinkman/valkey-ai-tasks/commit/d932f65ca6ed3e70a3da3775388d265ae409771d))
-* reorganize project structure by moving Go files to root directory ([7af5216](https://github.com/jbrinkman/valkey-ai-tasks/commit/7af5216a3a30a7cc2d8960e4ddf5306024a6a533))
-* update storage layer to use new Valkey Glide v2 API ([b764791](https://github.com/jbrinkman/valkey-ai-tasks/commit/b7647912a8069245a93f1397ac218fedf7de0fc0))
-
-### Tests
-
-* add edge case and concurrency tests for plan repository ([8461d68](https://github.com/jbrinkman/valkey-ai-tasks/commit/8461d684688eb0d563902870ccf18b73e63b9da1))
-* add integration tests for plan and task notes management ([02ce521](https://github.com/jbrinkman/valkey-ai-tasks/commit/02ce521ff80c6bf91df5f554028bef9b1203a225))
-* add integration tests for plan repository and edge cases ([9024954](https://github.com/jbrinkman/valkey-ai-tasks/commit/90249549a889f5e9c54bf8b2ee3d9617bae03a1b))
-* add integration tests for task repository and fix reordering logic ([344afb6](https://github.com/jbrinkman/valkey-ai-tasks/commit/344afb6c30486134666487c97e41fb78b3c9c1d3))
-* add MCP server integration tests with random port allocation ([1fd895e](https://github.com/jbrinkman/valkey-ai-tasks/commit/1fd895e8a830c73e0c99558f372e010a4209d86e))
-* update MCP server connection test to not use default endpoints and improve error handling ([dc49ee2](https://github.com/jbrinkman/valkey-ai-tasks/commit/dc49ee29c3fc74d9ea0d5b94c780c61bfba9405c))
-
-### Continuous Integration
-
-* configure semantic-release to use conventional commits preset ([1101272](https://github.com/jbrinkman/valkey-ai-tasks/commit/1101272c228bc5d4d204e4978a4c618fcf4d0215))
-* restructure workflow with PR validation and separate release paths ([21bb0b6](https://github.com/jbrinkman/valkey-ai-tasks/commit/21bb0b617725e972383290668b5c777db70e4931))

@@ -1,6 +1,6 @@
 {
   "name": "valkey-ai-tasks",
-  "version": "0.0.0-development",
+  "version": "1.0.1",
   "private": true,
   "description": "Task management system that implements the Model Context Protocol (MCP) for seamless integration with agentic AI tools",
   "repository": {
