@@ -23,11 +23,5 @@ jobs:
         run: |
           npm install -g @commitlint/cli @commitlint/config-conventional
 
-      - name: Create commitlint config
-        run: |
-          if [ ! -f commitlint.config.js ]; then
-            echo "module.exports = {extends: ['@commitlint/config-conventional']}" > commitlint.config.js
-          fi
-
       - name: Validate commit messages
         run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
