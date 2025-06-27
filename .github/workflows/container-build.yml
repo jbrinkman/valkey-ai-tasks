@@ -44,11 +44,55 @@ jobs:
           echo "new_release_version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
           # Update package.json version
           npm version ${{ github.event.inputs.version }} --no-git-tag-version
-          # Create a tag for this version
+          
+          # Configure git
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          
+          # Create a tag for this version
           git tag -a v${{ github.event.inputs.version }} -m "Release v${{ github.event.inputs.version }}"
+          
+      - name: Install dependencies for manual release
+        if: github.event_name == 'workflow_dispatch'
+        run: npm install -g conventional-changelog-cli
+
+      - name: Generate changelog for manual release
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          # Create or update CHANGELOG.md
+          if [ ! -f CHANGELOG.md ]; then
+            echo '# Changelog\n\n' > CHANGELOG.md
+          fi
+          
+          # Generate changelog content
+          TEMP_CHANGELOG=$(mktemp)
+          echo "## [v${{ github.event.inputs.version }}] - $(date +"%Y-%m-%d")" > "$TEMP_CHANGELOG"
+          echo "\n### Manual Release" >> "$TEMP_CHANGELOG"
+          echo "\n- Initial release version ${{ github.event.inputs.version }}" >> "$TEMP_CHANGELOG"
+          echo "\n" >> "$TEMP_CHANGELOG"
+          
+          # Prepend new content to existing changelog
+          cat CHANGELOG.md >> "$TEMP_CHANGELOG"
+          mv "$TEMP_CHANGELOG" CHANGELOG.md
+          
+          # Commit changes to package.json and CHANGELOG.md
+          git add package.json CHANGELOG.md
+          git commit -m "chore(release): v${{ github.event.inputs.version }} [skip ci]"
+          git push origin HEAD:${GITHUB_REF#refs/heads/}
+          
+          # Push the tag after the commit
           git push origin v${{ github.event.inputs.version }}
+
+      - name: Create GitHub Release for manual version
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release v${{ github.event.inputs.version }}
+          tag_name: v${{ github.event.inputs.version }}
+          generate_release_notes: true
+          body_path: CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
         if: github.event_name != 'workflow_dispatch'
