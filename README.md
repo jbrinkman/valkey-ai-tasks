@@ -111,18 +111,51 @@ The project includes a Makefile with targets for running tests:
 
 #### Docker Deployment
 
-1. Clone the repository:
+The MCP server is designed to run one protocol at a time for simplicity. By default, all protocols are disabled and you need to explicitly enable the one you want to use.
+
+### Prerequisites
+
+1. Create a named volume for Valkey data persistence:
    ```bash
-   git clone https://github.com/jbrinkman/valkey-ai-tasks.git
-   cd valkey-ai-tasks
+   docker volume create valkey-data
    ```
 
-2. Start the containers:
-   ```bash
-   docker-compose up -d
-   ```
+### Running with SSE (Recommended for most use cases)
 
-3. The MCP server will be available at `http://localhost:8080`
+```bash
+docker run -d --name valkey-mcp \
+  -p 8080:8080 \
+  -p 6379:6379 \
+  -v valkey-data:/data \
+  -e ENABLE_SSE=true \
+  valkey-tasks-mcp-server:latest
+```
+
+### Running with Streamable HTTP
+
+```bash
+docker run -d --name valkey-mcp \
+  -p 8080:8080 \
+  -p 6379:6379 \
+  -v valkey-data:/data \
+  -e ENABLE_STREAMABLE_HTTP=true \
+  valkey-tasks-mcp-server:latest
+```
+
+### Running with STDIO (For direct process communication)
+
+```bash
+docker run -i --rm --name valkey-mcp \
+  -v valkey-data:/data \
+  -e ENABLE_STDIO=true \
+  valkey-tasks-mcp-server:latest
+```
+
+### Building the Docker Image
+
+```bash
+docker build -t valkey-tasks-mcp-server:latest .
+```
 
 ## Environment Variables
 
@@ -130,15 +163,15 @@ The MCP server can be configured using the following environment variables:
 
 ### Database Configuration
 - `VALKEY_HOST`: Valkey server hostname (default: "localhost")
-- `VALKEY_PORT`: Valkey server port (default: 16379)
+- `VALKEY_PORT`: Valkey server port (default: 6379)
 - `VALKEY_USERNAME`: Valkey username (default: "")
 - `VALKEY_PASSWORD`: Valkey password (default: "")
 
 ### Server Configuration
 - `SERVER_PORT`: MCP server port (default: 8080)
 
-### Transport Configuration
-- `ENABLE_SSE`: Enable SSE transport (default: "true")
+### Transport Configuration (Only one should be enabled at a time)
+- `ENABLE_SSE`: Enable SSE transport (default: "false")
 - `SSE_ENDPOINT`: URL path for SSE transport (default: "/sse")
 - `SSE_KEEP_ALIVE`: Enable keep-alive for SSE (default: "true")
 - `SSE_KEEP_ALIVE_INTERVAL`: Interval for SSE keep-alive messages in seconds (default: 15)
@@ -146,6 +179,8 @@ The MCP server can be configured using the following environment variables:
 - `STREAMABLE_HTTP_ENDPOINT`: URL path for Streamable HTTP transport (default: "/mcp")
 - `STREAMABLE_HTTP_HEARTBEAT_INTERVAL`: Interval for Streamable HTTP heartbeat messages in seconds (default: 30)
 - `STREAMABLE_HTTP_STATELESS`: Enable stateless mode for Streamable HTTP (default: "false")
+- `ENABLE_STDIO`: Enable STDIO transport (default: "false")
+- `STDIO_ERROR_LOG`: Log errors to stderr when using STDIO (default: "true")
 
 ### HTTP Server Configuration
 - `SERVER_READ_TIMEOUT`: Maximum duration for reading the entire request in seconds (default: 60)
@@ -250,12 +285,12 @@ For agentic tools that need to start and manage the MCP server process, use a co
         "run",
         "-i",
         "--rm",
+        "-v", "valkey-data:/data"
         "-e", "ENABLE_SSE=false",
         "-e", "ENABLE_STREAMABLE_HTTP=false",
         "-e", "ENABLE_STDIO=true",
         "valkey-mcp-server"
-      ],
-      "transport": "stdio"
+      ]
     }
   }
 }
