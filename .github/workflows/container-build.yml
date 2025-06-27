@@ -42,7 +42,7 @@ jobs:
           echo '{"branches":["main"],"plugins":[["@semantic-release/npm",{"npmPublish":false}],"@semantic-release/github"]}' > .releaserc.dryrun.json
           
           # Run semantic-release with --dry-run and output to JSON file
-          npx semantic-release --dry-run --no-ci --extends .releaserc.dryrun.json > semantic-release-output.json || true
+          npx semantic-release --dry-run --no-ci --config .releaserc.dryrun.json > semantic-release-output.json || true
           
           # Check if a new release would be created
           if grep -q '"type":"minor"|"type":"major"|"type":"patch"' semantic-release-output.json; then
