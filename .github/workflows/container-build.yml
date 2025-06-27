@@ -84,6 +84,9 @@ jobs:
   semantic-release:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+      actions: write
     
     steps:
       - name: Checkout
@@ -109,6 +112,9 @@ jobs:
   manual-release:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+      actions: write
     
     steps:
       - name: Checkout
@@ -159,7 +165,10 @@ jobs:
           tag_name: v${{ github.event.inputs.version }}
           generate_release_notes: true
           body_path: CHANGELOG.md
+          draft: false
+          prerelease: false
         env:
+          # Use a token with workflow permissions
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-and-push:
