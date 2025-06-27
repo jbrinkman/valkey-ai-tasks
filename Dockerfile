@@ -24,26 +24,27 @@ COPY --from=builder /app/mcpserver .
 
 # Create a custom entrypoint script that leverages the bundle-docker-entrypoint.sh
 # but also starts our MCP server
-RUN echo '#!/bin/bash\n\
-    # First run the original bundle-docker-entrypoint.sh to set up Valkey\n\
-    # but with the --daemonize flag to run it in the background\n\
-    VALKEY_ARGS="$@"\n\
-    if [[ "$VALKEY_ARGS" == "valkey-server" ]]; then\n\
-    VALKEY_ARGS="valkey-server --daemonize yes --save 60 1 --loglevel warning --appendonly yes --appendfsync everysec --dir /data --dbfilename valkey.db --appendfilename valkey.aof"\n\
-    fi\n\
-    /usr/local/bin/bundle-docker-entrypoint.sh $VALKEY_ARGS\n\
-    \n\
-    # Wait for Valkey to be ready\n\
-    until valkey-cli ping; do\n\
-    echo "Waiting for Valkey to start..."\n\
-    sleep 1\n\
-    done\n\
-    echo "Valkey is ready!"\n\
-    \n\
-    # Run the MCP server with appropriate configuration\n\
-    exec ./mcpserver\n\
-    ' > /app/custom-entrypoint.sh && chmod +x /app/custom-entrypoint.sh
+RUN cat <<EOF > /app/custom-entrypoint.sh
+#!/bin/bash
+# First run the original bundle-docker-entrypoint.sh to set up Valkey
+# but with the --daemonize flag to run it in the background
+VALKEY_ARGS="$@"
+if [[ "$VALKEY_ARGS" == "valkey-server" ]]; then
+VALKEY_ARGS="valkey-server --daemonize yes --save 60 1 --loglevel warning --appendonly yes --appendfsync everysec --dir /data --dbfilename valkey.db --appendfilename valkey.aof"
+fi
+/usr/local/bin/bundle-docker-entrypoint.sh $VALKEY_ARGS
 
+# Wait for Valkey to be ready
+until valkey-cli ping; do
+echo "Waiting for Valkey to start..."
+sleep 1
+done
+echo "Valkey is ready!"
+
+# Run the MCP server with appropriate configuration
+exec ./mcpserver
+EOF
+RUN chmod +x /app/custom-entrypoint.sh
 # Expose both Valkey and MCP server ports
 EXPOSE 6379 8080
 
