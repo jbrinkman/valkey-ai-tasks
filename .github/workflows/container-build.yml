@@ -60,11 +60,9 @@ jobs:
               npx semantic-release
             else
               echo "new_release_published=false" >> $GITHUB_OUTPUT
-              echo "Could not determine version" >> $GITHUB_OUTPUT
             fi
           else
             echo "new_release_published=false" >> $GITHUB_OUTPUT
-            echo "No new version to be released" >> $GITHUB_OUTPUT
           fi
           
           # Clean up temporary files
