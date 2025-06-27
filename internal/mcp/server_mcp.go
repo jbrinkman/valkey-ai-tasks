@@ -19,8 +19,6 @@ import (
 	"github.com/jbrinkman/valkey-ai-tasks/internal/utils/markdown"
 )
 
-
-
 // ServerConfig holds configuration for the MCP server
 type ServerConfig struct {
 	// EnableSSE controls whether the SSE transport is enabled
@@ -97,14 +95,14 @@ func getServerConfigFromEnv() ServerConfig {
 		SSEKeepAliveInterval: 30,
 
 		// Streamable HTTP configuration
-		EnableStreamableHTTP:          false,
-		StreamableHTTPEndpoint:        "/mcp",
+		EnableStreamableHTTP:            false,
+		StreamableHTTPEndpoint:          "/mcp",
 		StreamableHTTPHeartbeatInterval: 30,
-		StreamableHTTPStateless:       false,
+		StreamableHTTPStateless:         false,
 
 		// STDIO configuration
-		EnableSTDIO:    false,
-		STDIOErrorLog:  true,
+		EnableSTDIO:   false,
+		STDIOErrorLog: true,
 
 		// Server configuration
 		ServerReadTimeout:  60,
@@ -217,8 +215,8 @@ func (s *MCPGoServer) transportSelectionHandler(w http.ResponseWriter, r *http.R
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status": "ok",
-			"message": "This server is configured for STDIO transport only. HTTP endpoints are not available.",
+			"status":     "ok",
+			"message":    "This server is configured for STDIO transport only. HTTP endpoints are not available.",
 			"transports": []string{"stdio"},
 		})
 		return
@@ -247,17 +245,17 @@ func (s *MCPGoServer) Start(port int) error {
 	// If STDIO is enabled, handle it separately as it's not compatible with HTTP server
 	if s.config.EnableSTDIO {
 		log.Printf("Enabling STDIO transport")
-		
+
 		// Only run STDIO if it's the only transport enabled
 		if !s.config.EnableSSE && !s.config.EnableStreamableHTTP {
 			// Configure STDIO options
 			var stdioOptions []server.StdioOption
-			
+
 			// Add error logger if enabled
 			if s.config.STDIOErrorLog {
 				stdioOptions = append(stdioOptions, server.WithErrorLogger(log.Default()))
 			}
-			
+
 			// Start STDIO server - this will block until terminated
 			return server.ServeStdio(s.server, stdioOptions...)
 		}
@@ -269,20 +267,20 @@ func (s *MCPGoServer) Start(port int) error {
 	// Configure SSE transport if enabled
 	if s.config.EnableSSE {
 		log.Printf("Enabling SSE transport at endpoint: %s", s.config.SSEEndpoint)
-		
+
 		// Create SSE server with configuration options
 		sseOptions := []server.SSEOption{
 			server.WithSSEEndpoint(s.config.SSEEndpoint),
 			server.WithKeepAlive(s.config.SSEKeepAlive),
 		}
-		
+
 		// Add keep-alive interval if keep-alive is enabled
 		if s.config.SSEKeepAlive && s.config.SSEKeepAliveInterval > 0 {
-			sseOptions = append(sseOptions, 
-				server.WithKeepAliveInterval(time.Duration(s.config.SSEKeepAliveInterval) * time.Second),
+			sseOptions = append(sseOptions,
+				server.WithKeepAliveInterval(time.Duration(s.config.SSEKeepAliveInterval)*time.Second),
 			)
 		}
-		
+
 		sseServer := server.NewSSEServer(s.server, sseOptions...)
 		mux.Handle(s.config.SSEEndpoint, sseServer)
 	}
@@ -290,20 +288,20 @@ func (s *MCPGoServer) Start(port int) error {
 	// Configure Streamable HTTP transport if enabled
 	if s.config.EnableStreamableHTTP {
 		log.Printf("Enabling Streamable HTTP transport at endpoint: %s", s.config.StreamableHTTPEndpoint)
-		
+
 		// Create Streamable HTTP server with configuration options
 		streamableOptions := []server.StreamableHTTPOption{
 			server.WithEndpointPath(s.config.StreamableHTTPEndpoint),
 			server.WithStateLess(s.config.StreamableHTTPStateless),
 		}
-		
+
 		// Add heartbeat interval if configured
 		if s.config.StreamableHTTPHeartbeatInterval > 0 {
-			streamableOptions = append(streamableOptions, 
-				server.WithHeartbeatInterval(time.Duration(s.config.StreamableHTTPHeartbeatInterval) * time.Second),
+			streamableOptions = append(streamableOptions,
+				server.WithHeartbeatInterval(time.Duration(s.config.StreamableHTTPHeartbeatInterval)*time.Second),
 			)
 		}
-		
+
 		streamableServer := server.NewStreamableHTTPServer(s.server, streamableOptions...)
 		mux.Handle(s.config.StreamableHTTPEndpoint, streamableServer)
 	}
@@ -363,7 +361,6 @@ func (s *MCPGoServer) registerTools() {
 }
 
 // Plan tools implementation
-
 func (s *MCPGoServer) registerCreatePlanTool() {
 	tool := mcp.NewTool("create_plan",
 		mcp.WithDescription("Create a new plan for planning and organizing a feature or initiative"),
