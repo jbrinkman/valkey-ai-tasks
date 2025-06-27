@@ -1,15 +1,20 @@
 name: Build and Publish Container
 
 on:
-  pull_request:
-    branches: [ main ]
-    types: [opened, synchronize, reopened]
   push:
-    branches: [ main ]
+    branches:
+      - main
     paths-ignore:
       - '**.md'
-      - 'docs/**'
-      - '.github/*.md'
+      - '.gitignore'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       version:
@@ -18,17 +23,15 @@ on:
         type: string
 
 jobs:
-  semantic-release:
+  # Job to validate semantic-release on PRs
+  pr-semantic-release-check:
     runs-on: ubuntu-latest
-    outputs:
-      new_release_published: ${{ steps.semantic.outputs.new_release_published == 'true' || steps.manual-version.outputs.new_release_published == 'true' }}
-      new_release_version: ${{ steps.semantic.outputs.new_release_version || steps.manual-version.outputs.new_release_version }}
+    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -36,55 +39,120 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Set manual version
-        id: manual-version
-        if: github.event_name == 'workflow_dispatch'
+      - name: Install dependencies
+        run: npm install -g semantic-release @semantic-release/git @semantic-release/changelog @semantic-release/github conventional-changelog-conventionalcommits
+
+      - name: Dry Run Semantic Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release --dry-run
+
+  # Job for Docker build validation on PRs
+  pr-build-check:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.ref }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-${{ github.ref }}
+            ${{ runner.os }}-buildx-
+
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: ghcr.io/${{ github.repository }}:pr-${{ github.event.pull_request.number }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      - name: Move cache
         run: |
-          echo "new_release_published=true" >> $GITHUB_OUTPUT
-          echo "new_release_version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          # Update package.json version
-          npm version ${{ github.event.inputs.version }} --no-git-tag-version
-          
-          # Configure git
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+  semantic-release:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install -g semantic-release @semantic-release/git @semantic-release/changelog @semantic-release/github conventional-changelog-conventionalcommits
+
+      - name: Semantic Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
+        
+  manual-release:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Configure git
+        run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          
+      - name: Update version and create tag
+        run: |
+          # Update package.json version
+          npm version ${{ github.event.inputs.version }} --no-git-tag-version
           
           # Create a tag for this version
           git tag -a v${{ github.event.inputs.version }} -m "Release v${{ github.event.inputs.version }}"
           
-      - name: Install dependencies for manual release
-        if: github.event_name == 'workflow_dispatch'
-        run: npm install -g conventional-changelog-cli
-
-      - name: Generate changelog for manual release
-        if: github.event_name == 'workflow_dispatch'
+      - name: Generate changelog
         run: |
-          # Create or update CHANGELOG.md
-          if [ ! -f CHANGELOG.md ]; then
-            echo '# Changelog\n\n' > CHANGELOG.md
-          fi
+          # Install conventional-changelog-cli
+          npm install -g conventional-changelog-cli
           
-          # Generate changelog content
-          TEMP_CHANGELOG=$(mktemp)
-          echo "## [v${{ github.event.inputs.version }}] - $(date +"%Y-%m-%d")" > "$TEMP_CHANGELOG"
-          echo "\n### Manual Release" >> "$TEMP_CHANGELOG"
-          echo "\n- Initial release version ${{ github.event.inputs.version }}" >> "$TEMP_CHANGELOG"
-          echo "\n" >> "$TEMP_CHANGELOG"
+          # Generate changelog
+          conventional-changelog -p angular -i CHANGELOG.md -s -r 0
           
-          # Prepend new content to existing changelog
-          cat CHANGELOG.md >> "$TEMP_CHANGELOG"
-          mv "$TEMP_CHANGELOG" CHANGELOG.md
-          
-          # Commit changes to package.json and CHANGELOG.md
-          git add package.json CHANGELOG.md
+          # Commit changes
+          git add CHANGELOG.md package.json
           git commit -m "chore(release): v${{ github.event.inputs.version }} [skip ci]"
-          git push origin HEAD:${GITHUB_REF#refs/heads/}
           
-          # Push the tag after the commit
-          git push origin v${{ github.event.inputs.version }}
+          # Push changes and tag
+          git push https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
+          git push https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git --tags
 
-      - name: Create GitHub Release for manual version
-        if: github.event_name == 'workflow_dispatch'
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           name: Release v${{ github.event.inputs.version }}
@@ -94,82 +162,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install dependencies
-        if: github.event_name != 'workflow_dispatch'
-        run: npm install -g semantic-release @semantic-release/git @semantic-release/changelog @semantic-release/github conventional-changelog-conventionalcommits
-
-      - name: Semantic Release
-        id: semantic
-        if: github.event_name != 'workflow_dispatch'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Create a temporary config file for dry run
-          cat > .releaserc.dryrun.json << 'EOL'
-          {
-            "branches": ["main"],
-            "plugins": [
-              ["@semantic-release/commit-analyzer", {
-                "preset": "conventionalcommits"
-              }],
-              ["@semantic-release/release-notes-generator", {
-                "preset": "conventionalcommits"
-              }]
-            ]
-          }
-          EOL
-          
-          # Run semantic-release with --dry-run and output to JSON file
-          npx semantic-release --dry-run --no-ci --config .releaserc.dryrun.json > semantic-release-output.json || true
-          
-          # Debug output
-          echo "Semantic release output:"
-          cat semantic-release-output.json
-          
-          # Check if a new release would be created
-          if grep -q '"type":"minor"\|"type":"major"\|"type":"patch"' semantic-release-output.json; then
-            # Extract version using jq if available, otherwise fallback to grep
-            if command -v jq &> /dev/null; then
-              VERSION=$(cat semantic-release-output.json | jq -r 'select(.nextRelease != null) | .nextRelease.version' 2>/dev/null || echo "")
-            else
-              VERSION=$(grep -o '"version":"[0-9]\+\.[0-9]\+\.[0-9]\+"' semantic-release-output.json | head -1 | cut -d '"' -f 4)
-            fi
-            
-            if [ -n "$VERSION" ]; then
-              echo "Will create new release: $VERSION"
-              echo "new_release_published=true" >> $GITHUB_OUTPUT
-              echo "new_release_version=$VERSION" >> $GITHUB_OUTPUT
-              # Run the actual release with the proper config
-              npx semantic-release
-            else
-              echo "Version could not be determined"
-              echo "new_release_published=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "No new release detected"
-            echo "new_release_published=false" >> $GITHUB_OUTPUT
-          fi
-          
-          # Clean up temporary files
-          rm -f semantic-release-output.json .releaserc.dryrun.json
-        
   build-and-push:
-    needs: semantic-release
-    # Add debug output to see what's happening
-    if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
     runs-on: ubuntu-latest
+    needs: [manual-release]
+    if: |
+      github.event_name == 'release' || 
+      github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
       packages: write
     
     steps:
-      - name: Debug output
-        run: |
-          echo "new_release_published: ${{ needs.semantic-release.outputs.new_release_published }}"
-          echo "new_release_version: ${{ needs.semantic-release.outputs.new_release_version }}"
-          echo "Is true? ${{ needs.semantic-release.outputs.new_release_published == 'true' }}"
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -190,14 +197,27 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Get version for tagging
+        id: get-version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # For manual workflow, use the input version
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            # For release event, extract version from the release tag
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Using version: $VERSION"
+
       - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=semver,pattern={{version}},value=${{ needs.semantic-release.outputs.new_release_version }}
-            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+            type=semver,pattern={{version}},value=${{ steps.get-version.outputs.version }}
+            type=raw,value=latest
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -208,7 +228,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-          
+
       - name: Move cache
         run: |
           rm -rf /tmp/.buildx-cache
