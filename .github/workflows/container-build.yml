@@ -96,7 +96,7 @@ jobs:
 
       - name: Install dependencies
         if: github.event_name != 'workflow_dispatch'
-        run: npm install -g semantic-release @semantic-release/git @semantic-release/changelog @semantic-release/github
+        run: npm install -g semantic-release @semantic-release/git @semantic-release/changelog @semantic-release/github conventional-changelog-conventionalcommits
 
       - name: Semantic Release
         id: semantic
@@ -109,8 +109,12 @@ jobs:
           {
             "branches": ["main"],
             "plugins": [
-              "@semantic-release/commit-analyzer",
-              "@semantic-release/release-notes-generator"
+              ["@semantic-release/commit-analyzer", {
+                "preset": "conventionalcommits"
+              }],
+              ["@semantic-release/release-notes-generator", {
+                "preset": "conventionalcommits"
+              }]
             ]
           }
           EOL
