@@ -21,7 +21,7 @@ jobs:
   semantic-release:
     runs-on: ubuntu-latest
     outputs:
-      new_release_published: ${{ steps.semantic.outputs.new_release_published || steps.manual-version.outputs.new_release_published }}
+      new_release_published: ${{ steps.semantic.outputs.new_release_published == 'true' || steps.manual-version.outputs.new_release_published == 'true' }}
       new_release_version: ${{ steps.semantic.outputs.new_release_version || steps.manual-version.outputs.new_release_version }}
     steps:
       - name: Checkout
@@ -104,14 +104,26 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Create a temporary JSON file to store semantic-release output
-          echo '{"branches":["main"],"plugins":[["@semantic-release/npm",{"npmPublish":false}],"@semantic-release/github"]}' > .releaserc.dryrun.json
+          # Create a temporary config file for dry run
+          cat > .releaserc.dryrun.json << 'EOL'
+          {
+            "branches": ["main"],
+            "plugins": [
+              "@semantic-release/commit-analyzer",
+              "@semantic-release/release-notes-generator"
+            ]
+          }
+          EOL
           
           # Run semantic-release with --dry-run and output to JSON file
           npx semantic-release --dry-run --no-ci --config .releaserc.dryrun.json > semantic-release-output.json || true
           
+          # Debug output
+          echo "Semantic release output:"
+          cat semantic-release-output.json
+          
           # Check if a new release would be created
-          if grep -q '"type":"minor"|"type":"major"|"type":"patch"' semantic-release-output.json; then
+          if grep -q '"type":"minor"\|"type":"major"\|"type":"patch"' semantic-release-output.json; then
             # Extract version using jq if available, otherwise fallback to grep
             if command -v jq &> /dev/null; then
               VERSION=$(cat semantic-release-output.json | jq -r 'select(.nextRelease != null) | .nextRelease.version' 2>/dev/null || echo "")
@@ -120,14 +132,17 @@ jobs:
             fi
             
             if [ -n "$VERSION" ]; then
+              echo "Will create new release: $VERSION"
               echo "new_release_published=true" >> $GITHUB_OUTPUT
               echo "new_release_version=$VERSION" >> $GITHUB_OUTPUT
               # Run the actual release with the proper config
               npx semantic-release
             else
+              echo "Version could not be determined"
               echo "new_release_published=false" >> $GITHUB_OUTPUT
             fi
           else
+            echo "No new release detected"
             echo "new_release_published=false" >> $GITHUB_OUTPUT
           fi
           
@@ -136,13 +151,19 @@ jobs:
         
   build-and-push:
     needs: semantic-release
-    if: needs.semantic-release.outputs.new_release_published == 'true'
+    # Add debug output to see what's happening
+    if: ${{ needs.semantic-release.outputs.new_release_published == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     
     steps:
+      - name: Debug output
+        run: |
+          echo "new_release_published: ${{ needs.semantic-release.outputs.new_release_published }}"
+          echo "new_release_version: ${{ needs.semantic-release.outputs.new_release_version }}"
+          echo "Is true? ${{ needs.semantic-release.outputs.new_release_published == 'true' }}"
       - name: Checkout
         uses: actions/checkout@v4
 
