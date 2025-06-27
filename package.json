@@ -1,0 +1,21 @@
+{
+  "name": "valkey-ai-tasks",
+  "version": "0.0.0-development",
+  "private": true,
+  "description": "Task management system that implements the Model Context Protocol (MCP) for seamless integration with agentic AI tools",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jbrinkman/valkey-ai-tasks.git"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^18.4.3",
+    "@commitlint/config-conventional": "^18.4.3",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "conventional-changelog-conventionalcommits": "^7.0.2",
+    "semantic-release": "^22.0.12"
+  },
+  "scripts": {
+    "semantic-release": "semantic-release"
+  }
+}

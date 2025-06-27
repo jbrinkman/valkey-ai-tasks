@@ -1,5 +1,8 @@
 # Valkey MCP Task Management Server
 
+[![Build and Publish Container](https://github.com/jbrinkman/valkey-ai-tasks/actions/workflows/container-build.yml/badge.svg)](https://github.com/jbrinkman/valkey-ai-tasks/actions/workflows/container-build.yml)
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
+
 A task management system that implements the Model Context Protocol (MCP) for seamless integration with agentic AI tools. This system allows AI agents to create, manage, and track tasks within plans using Valkey as the persistence layer.
 
 ## Features
@@ -185,6 +188,77 @@ The MCP server can be configured using the following environment variables:
 ### HTTP Server Configuration
 - `SERVER_READ_TIMEOUT`: Maximum duration for reading the entire request in seconds (default: 60)
 - `SERVER_WRITE_TIMEOUT`: Maximum duration for writing the response in seconds (default: 60)
+
+## CI/CD Workflow
+
+This project uses GitHub Actions for continuous integration and delivery, automatically building and publishing container images to GitHub Container Registry (ghcr.io).
+
+### Conventional Commits
+
+All commits to this repository must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. This enables automated versioning, changelog generation, and release management.
+
+The commit message format is:
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+Where `type` is one of:
+- `feat`: A new feature
+- `fix`: A bug fix
+- `docs`: Documentation changes
+- `style`: Changes that don't affect code meaning (formatting, etc.)
+- `refactor`: Code changes that neither fix bugs nor add features
+- `perf`: Performance improvements
+- `test`: Adding or correcting tests
+- `build`: Changes to build system or dependencies
+- `ci`: Changes to CI configuration
+- `chore`: Other changes that don't modify source or test files
+
+Breaking changes must be indicated by `!` after the type/scope or by including `BREAKING CHANGE:` in the footer.
+
+### Automated Versioning
+
+The project uses [Semantic Release](https://github.com/semantic-release/semantic-release) to automatically determine the next version number based on conventional commits:
+
+- `fix:` commits increment the patch version (1.0.0 → 1.0.1)
+- `feat:` commits increment the minor version (1.0.0 → 1.1.0)
+- Breaking changes increment the major version (1.0.0 → 2.0.0)
+
+### Container Image Workflow
+
+The GitHub Actions workflow automatically:
+
+1. Validates that commits follow the conventional format
+2. Determines the next semantic version based on commit messages
+3. Builds the Docker image using the project's Dockerfile
+4. Tags the image with the semantic version and 'latest' tag
+5. Pushes the image to GitHub Container Registry (ghcr.io)
+6. Creates a Git tag for the version
+7. Generates a changelog
+8. Creates a GitHub Release with release notes
+
+#### Required GitHub Secrets
+
+To enable the CI/CD workflow to function properly, the following GitHub secrets need to be configured in your repository:
+
+- `GITHUB_TOKEN`: This is automatically provided by GitHub Actions and is used for authentication with GitHub Container Registry. Make sure it has the necessary permissions for `packages:read` and `packages:write`.
+
+No additional secrets are required as the workflow uses the built-in `GITHUB_TOKEN` for all authentication needs.
+
+### Using the Container Images
+
+The container images are published to GitHub Container Registry and can be pulled using:
+
+```bash
+docker pull ghcr.io/jbrinkman/valkey-ai-tasks:latest
+# or a specific version
+docker pull ghcr.io/jbrinkman/valkey-ai-tasks:1.2.3
+```
 
 ## MCP API Reference
 
