@@ -42,7 +42,7 @@ jobs:
 
       - name: Dry Run Semantic Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
         run: npx semantic-release --dry-run
 
   # Job for Docker build validation on PRs
@@ -104,7 +104,7 @@ jobs:
 
       - name: Semantic Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
         run: npx semantic-release
         
   manual-release:
@@ -153,8 +153,8 @@ jobs:
           git commit -m "chore(release): v${{ github.event.inputs.version }} [skip ci]"
           
           # Push changes and tag
-          git push https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
-          git push https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git --tags
+          git push https://${{ github.actor }}:${{ secrets.MY_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
+          git push https://${{ github.actor }}:${{ secrets.MY_TOKEN }}@github.com/${{ github.repository }}.git --tags
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -167,5 +167,5 @@ jobs:
           prerelease: false
         env:
           # Use a token with workflow permissions
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.MY_TOKEN }}
 
