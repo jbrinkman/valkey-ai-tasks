@@ -2,10 +2,8 @@ name: Build and Publish Container
 
 on:
   release:
-    types: [published, created, released]
-  push:
-    tags:
-      - 'v*'
+    types: [published]
+
   workflow_dispatch:
     inputs:
       version:
