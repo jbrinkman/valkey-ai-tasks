@@ -1,8 +1,15 @@
-## [1.1.0](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.0.3...v1.1.0) (2025-06-28)
+## [1.1.1](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.1.0...v1.1.1) (2025-06-28)
+
+
+
+# [1.1.0](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.0.3...v1.1.0) (2025-06-28)
+
 
 ### Features
 
 * add manual workflow trigger with version input for container publishing ([497140e](https://github.com/jbrinkman/valkey-ai-tasks/commit/497140e86ece71dc2644a24d35bfee94813caee6))
+
+
 
 ## [1.0.3](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.0.2...v1.0.3) (2025-06-28)
 
@@ -66,3 +73,6 @@
 * create initial plan for adding STDIO transport support to MCP server ([75a68b3](https://github.com/jbrinkman/valkey-ai-tasks/commit/75a68b37f03bd31e8fdc2501c341fce5e8a19574))
 * implement CI/CD workflow for container image builds and releases ([8fdb287](https://github.com/jbrinkman/valkey-ai-tasks/commit/8fdb287b370a1d09ba0283f382bcee953cd83eca)), closes [#18](https://github.com/jbrinkman/valkey-ai-tasks/issues/18)
 * switch to SSE server and update tool descriptions for feature planning focus ([e24d8af](https://github.com/jbrinkman/valkey-ai-tasks/commit/e24d8afb04480952f18ad6019467ba34dd8de366))
+
+
+
