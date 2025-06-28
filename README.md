@@ -1,6 +1,6 @@
 # Valkey MCP Task Management Server
 
-[![Build and Publish Container](https://github.com/jbrinkman/valkey-ai-tasks/actions/workflows/container-build.yml/badge.svg)](https://github.com/jbrinkman/valkey-ai-tasks/actions/workflows/container-build.yml)
+[![Build and Publish Container](https://github.com/jbrinkman/valkey-ai-tasks/actions/workflows/publish-container-image.yml/badge.svg)](https://github.com/jbrinkman/valkey-ai-tasks/actions/workflows/publish-container-image.yml)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
 
 A task management system that implements the Model Context Protocol (MCP) for seamless integration with agentic AI tools. This system allows AI agents to create, manage, and track tasks within plans using Valkey as the persistence layer.
