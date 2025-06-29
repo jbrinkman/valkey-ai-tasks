@@ -24,106 +24,20 @@ The system is built using:
 - **Valkey-Glide v2**: Official Go client for Valkey
 - **Model Context Protocol**: For AI agent integration
 
-## Directory Structure
+## Quick Start
 
-```
-valkey-ai-tasks/
-├── cmd/                  # Command-line applications
-│   └── mcpserver/        # MCP server entry point
-├── examples/             # Example files and templates
-│   └── agent_prompts.md  # Example agent prompts for using notes
-├── internal/             # Internal packages
-│   ├── models/           # Data models
-│   ├── mcp/              # MCP server implementation
-│   ├── storage/          # Valkey storage layer
-│   └── utils/            # Utility functions
-│       └── markdown/     # Markdown processing utilities
-├── tests/                # Test files
-│   ├── integration/      # Integration tests
-│   └── utils/            # Test utilities
-├── Dockerfile            # Docker build file
-├── docker-compose.yml    # Docker Compose configuration
-├── go.mod                # Go module definition
-└── README.md             # This file
-```
-
-## Getting Started
-
-### Prerequisites
-
-- Go 1.24 or later
-- Valkey server
-- Docker and Docker Compose (for containerized deployment)
-- GNU Make (for running Makefile commands)
-
-### Installation
-
-#### Local Development
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/jbrinkman/valkey-ai-tasks.git
-   cd valkey-ai-tasks
-   ```
-
-2. Install dependencies:
-   ```bash
-   go mod download
-   ```
-
-3. Run the MCP server:
-   ```bash
-   make run
-   # or directly with:
-   go run cmd/mcpserver/main.go
-   ```
-
-### Running Tests
-
-The project includes a Makefile with targets for running tests:
-
-1. Run all tests:
-   ```bash
-   make test
-   ```
-
-2. Run integration tests only:
-   ```bash
-   make integ-test
-   ```
-
-3. Run tests with a filter:
-   ```bash
-   make test filter=TestName
-   ```
-
-4. Run tests with verbose output:
-   ```bash
-   make test verbose=1
-   ```
-
-5. Generate test coverage report:
-   ```bash
-   make coverage
-   ```
-
-6. View all available Makefile targets:
-   ```bash
-   make help
-   ```
-
-#### Docker Deployment
+### Docker Deployment
 
 The MCP server is designed to run one protocol at a time for simplicity. By default, all protocols are disabled and you need to explicitly enable the one you want to use.
 
-### Prerequisites
+#### Prerequisites
 
 1. Create a named volume for Valkey data persistence:
    ```bash
    docker volume create valkey-data
    ```
 
-### Running with SSE (Recommended for most use cases)
+#### Running with SSE (Recommended for most use cases)
 
 ```bash
 docker run -d --name valkey-mcp \
@@ -134,7 +48,7 @@ docker run -d --name valkey-mcp \
   valkey-tasks-mcp-server:latest
 ```
 
-### Running with Streamable HTTP
+#### Running with Streamable HTTP
 
 ```bash
 docker run -d --name valkey-mcp \
@@ -145,7 +59,7 @@ docker run -d --name valkey-mcp \
   valkey-tasks-mcp-server:latest
 ```
 
-### Running with STDIO (For direct process communication)
+#### Running with STDIO (For direct process communication)
 
 ```bash
 docker run -i --rm --name valkey-mcp \
@@ -153,102 +67,6 @@ docker run -i --rm --name valkey-mcp \
   -e ENABLE_STDIO=true \
   valkey-tasks-mcp-server:latest
 ```
-
-### Building the Docker Image
-
-```bash
-docker build -t valkey-tasks-mcp-server:latest .
-```
-
-## Environment Variables
-
-The MCP server can be configured using the following environment variables:
-
-### Database Configuration
-- `VALKEY_HOST`: Valkey server hostname (default: "localhost")
-- `VALKEY_PORT`: Valkey server port (default: 6379)
-- `VALKEY_USERNAME`: Valkey username (default: "")
-- `VALKEY_PASSWORD`: Valkey password (default: "")
-
-### Server Configuration
-- `SERVER_PORT`: MCP server port (default: 8080)
-
-### Transport Configuration (Only one should be enabled at a time)
-- `ENABLE_SSE`: Enable SSE transport (default: "false")
-- `SSE_ENDPOINT`: URL path for SSE transport (default: "/sse")
-- `SSE_KEEP_ALIVE`: Enable keep-alive for SSE (default: "true")
-- `SSE_KEEP_ALIVE_INTERVAL`: Interval for SSE keep-alive messages in seconds (default: 15)
-- `ENABLE_STREAMABLE_HTTP`: Enable Streamable HTTP transport (default: "false")
-- `STREAMABLE_HTTP_ENDPOINT`: URL path for Streamable HTTP transport (default: "/mcp")
-- `STREAMABLE_HTTP_HEARTBEAT_INTERVAL`: Interval for Streamable HTTP heartbeat messages in seconds (default: 30)
-- `STREAMABLE_HTTP_STATELESS`: Enable stateless mode for Streamable HTTP (default: "false")
-- `ENABLE_STDIO`: Enable STDIO transport (default: "false")
-- `STDIO_ERROR_LOG`: Log errors to stderr when using STDIO (default: "true")
-
-### HTTP Server Configuration
-- `SERVER_READ_TIMEOUT`: Maximum duration for reading the entire request in seconds (default: 60)
-- `SERVER_WRITE_TIMEOUT`: Maximum duration for writing the response in seconds (default: 60)
-
-## CI/CD Workflow
-
-This project uses GitHub Actions for continuous integration and delivery, automatically building and publishing container images to GitHub Container Registry (ghcr.io).
-
-### Conventional Commits
-
-All commits to this repository must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. This enables automated versioning, changelog generation, and release management.
-
-The commit message format is:
-
-```
-<type>[optional scope]: <description>
-
-[optional body]
-
-[optional footer(s)]
-```
-
-Where `type` is one of:
-- `feat`: A new feature
-- `fix`: A bug fix
-- `docs`: Documentation changes
-- `style`: Changes that don't affect code meaning (formatting, etc.)
-- `refactor`: Code changes that neither fix bugs nor add features
-- `perf`: Performance improvements
-- `test`: Adding or correcting tests
-- `build`: Changes to build system or dependencies
-- `ci`: Changes to CI configuration
-- `chore`: Other changes that don't modify source or test files
-
-Breaking changes must be indicated by `!` after the type/scope or by including `BREAKING CHANGE:` in the footer.
-
-### Automated Versioning
-
-The project uses [Semantic Release](https://github.com/semantic-release/semantic-release) to automatically determine the next version number based on conventional commits:
-
-- `fix:` commits increment the patch version (1.0.0 → 1.0.1)
-- `feat:` commits increment the minor version (1.0.0 → 1.1.0)
-- Breaking changes increment the major version (1.0.0 → 2.0.0)
-
-### Container Image Workflow
-
-The GitHub Actions workflow automatically:
-
-1. Validates that commits follow the conventional format
-2. Determines the next semantic version based on commit messages
-3. Builds the Docker image using the project's Dockerfile
-4. Tags the image with the semantic version and 'latest' tag
-5. Pushes the image to GitHub Container Registry (ghcr.io)
-6. Creates a Git tag for the version
-7. Generates a changelog
-8. Creates a GitHub Release with release notes
-
-#### Required GitHub Secrets
-
-To enable the CI/CD workflow to function properly, the following GitHub secrets need to be configured in your repository:
-
-- `GITHUB_TOKEN`: This is automatically provided by GitHub Actions and is used for authentication with GitHub Container Registry. Make sure it has the necessary permissions for `packages:read` and `packages:write`.
-
-No additional secrets are required as the workflow uses the built-in `GITHUB_TOKEN` for all authentication needs.
 
 ### Using the Container Images
 
@@ -290,26 +108,26 @@ The server automatically selects the appropriate transport based on:
 
 ### Available Functions
 
-#### Project Management
+#### Plan Management
 
-- `create_project`: Create a new project
-- `get_project`: Get a project by ID
-- `list_projects`: List all projects
-- `list_projects_by_application`: List all projects for a specific application
-- `update_project`: Update an existing project
-- `delete_project`: Delete a project by ID
-- `update_project_notes`: Update notes for a project
-- `get_project_notes`: Get notes for a project
+- `create_plan`: Create a new plan
+- `get_plan`: Get a plan by ID
+- `list_plans`: List all plans
+- `list_plans_by_application`: List all plans for a specific application
+- `update_plan`: Update an existing plan
+- `delete_plan`: Delete a plan by ID
+- `update_plan_notes`: Update notes for a plan
+- `get_plan_notes`: Get notes for a plan
 
 #### Task Management
 
-- `create_task`: Create a new task in a project
+- `create_task`: Create a new task in a plan
 - `get_task`: Get a task by ID
-- `list_tasks_by_project`: List all tasks in a project
+- `list_tasks_by_plan`: List all tasks in a plan
 - `list_tasks_by_status`: List all tasks with a specific status
 - `update_task`: Update an existing task
 - `delete_task`: Delete a task by ID
-- `reorder_task`: Change the order of a task within its project
+- `reorder_task`: Change the order of a task within its plan
 - `update_task_notes`: Update notes for a task
 - `get_task_notes`: Get notes for a task
 
@@ -370,27 +188,6 @@ For agentic tools that need to start and manage the MCP server process, use a co
 }
 ```
 
-Alternatively, for a local binary:
-
-```json
-{
-  "mcpServers": {
-    "valkey-tasks": {
-      "command": "/path/to/mcpserver",
-      "args": [],
-      "env": {
-        "ENABLE_SSE": "false",
-        "ENABLE_STREAMABLE_HTTP": "false",
-        "ENABLE_STDIO": "true"
-      },
-      "transport": "stdio"
-    }
-  }
-}
-```
-
-When using STDIO transport, the server must be started with the `ENABLE_STDIO=true` environment variable, and the client must be configured to use the `stdio` transport type. No `serverUrl` is required for STDIO transport as communication happens directly through stdin/stdout.
-
 ### Docker MCP Configuration
 
 When running in Docker, use the container name as the hostname:
@@ -406,75 +203,6 @@ When running in Docker, use the container name as the hostname:
   }
 }
 ```
-
-#### Using Streamable HTTP Transport
-
-```json
-{
-  "mcpServers": {
-    "valkey-tasks": {
-      "serverUrl": "http://valkey-mcp-server:8080/mcp",
-      "transport": "streamable-http"
-    }
-  }
-}
-```
-
-If accessing from outside the Docker network:
-
-```json
-{
-  "mcpServers": {
-    "valkey-tasks": {
-      "serverUrl": "http://localhost:8080/mcp",
-      "transport": "streamable-http"
-    }
-  }
-}
-```
-
-#### Using STDIO Transport with Docker
-
-For Docker environments, agentic tools can use this configuration to start and manage the MCP server:
-
-```json
-{
-  "mcpServers": {
-    "valkey-tasks": {
-      "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "-e", "ENABLE_SSE=false",
-        "-e", "ENABLE_STREAMABLE_HTTP=false",
-        "-e", "ENABLE_STDIO=true",
-        "valkey-mcp-server"
-      ],
-      "transport": "stdio"
-    }
-  }
-}
-```
-
-For manual testing or development, you can run the container directly:
-
-```bash
-# Run the MCP server with STDIO transport enabled
-docker run -i --rm \
-  -e ENABLE_SSE=false \
-  -e ENABLE_STREAMABLE_HTTP=false \
-  -e ENABLE_STDIO=true \
-  valkey-mcp-server
-```
-
-Alternatively, you can use the provided `docker-compose.stdio.yml` file:
-
-```bash
-docker-compose -f docker-compose.stdio.yml up mcpserver-stdio
-```
-
-Note that the `-i` flag (or `stdin_open: true` in docker-compose) is essential for STDIO transport to work properly, as it keeps stdin open for communication.
 
 ## Notes Functionality
 
@@ -510,7 +238,7 @@ AI agents can interact with this task management system through the MCP API usin
 ### Using SSE Transport
 
 1. The agent calls `/sse/list_functions` to discover available functions
-2. The agent calls `/sse/invoke/create_project` with parameters:
+2. The agent calls `/sse/invoke/create_plan` with parameters:
    ```json
    {
      "application_id": "my-app",
@@ -519,12 +247,12 @@ AI agents can interact with this task management system through the MCP API usin
      "notes": "# Project Notes\n\nThis project aims to implement the following features:\n\n- Feature A\n- Feature B\n- Feature C"
    }
    ```
-3. The agent can add tasks to the project using either:
+3. The agent can add tasks to the plan using either:
    - Individual task creation with `/sse/invoke/create_task`
    - Bulk task creation with `/sse/invoke/bulk_create_tasks` for multiple tasks at once:
      ```json
      {
-       "project_id": "project-123",
+       "plan_id": "plan-123",
        "tasks_json": "[
          {
            \"title\": \"Task 1\",
@@ -543,60 +271,6 @@ AI agents can interact with this task management system through the MCP API usin
      }
      ```
 4. The agent calls `/sse/invoke/update_task` to update task status as work progresses
-5. The agent can add or update notes for a project using `/sse/invoke/update_project_notes`:
-   ```json
-   {
-     "id": "project-123",
-     "notes": "# Updated Project Notes\n\nAdded new requirements:\n\n- Requirement X\n- Requirement Y"
-   }
-   ```
-6. The agent can add or update notes for a task using `/sse/invoke/update_task_notes`:
-   ```json
-   {
-     "id": "task-456",
-     "notes": "# Updated Task Notes\n\nFound a better approach:\n\n```go\nfunc betterSolution() {\n  // code here\n}\n```"
-   }
-   ```
-
-### Using Streamable HTTP Transport
-
-1. The agent sends a POST request to `/mcp` with the following JSON to discover available functions:
-   ```json
-   {
-     "method": "list_functions",
-     "params": {}
-   }
-   ```
-
-2. The agent sends a POST request to `/mcp` to create a project:
-   ```json
-   {
-     "method": "invoke",
-     "params": {
-       "function": "create_project",
-       "params": {
-         "application_id": "my-app",
-         "name": "New Feature Development",
-         "description": "Implement new features for the application",
-         "notes": "# Project Notes\n\nThis project aims to implement the following features:\n\n- Feature A\n- Feature B\n- Feature C"
-       }
-     }
-   }
-   ```
-
-3. The agent can add tasks to the project by sending a POST request to `/mcp`:
-   ```json
-   {
-     "method": "invoke",
-     "params": {
-       "function": "bulk_create_tasks",
-       "params": {
-         "project_id": "project-123",
-         "tasks_json": "[{\"title\": \"Task 1\", \"description\": \"Description for task 1\", \"priority\": \"high\", \"status\": \"pending\"}, {\"title\": \"Task 2\", \"description\": \"Description for task 2\", \"priority\": \"medium\", \"status\": \"pending\"}]"
-       }
-     }
-   }
-   ```
 
 ### Sample Agent Prompt
 
@@ -604,7 +278,7 @@ Here's a sample prompt that would trigger an AI agent to use the MCP task manage
 
 ```
 I need to organize work for my new application called "inventory-manager". 
-Create a project for this application with the following project notes:
+Create a plan for this application with the following plan notes:
 "# Inventory Manager Project
 
 This project aims to create a comprehensive inventory management system with the following goals:
@@ -633,12 +307,18 @@ Prioritize the tasks appropriately and set the first two tasks as "in_progress".
 ```
 
 With this prompt, an AI agent with access to the Valkey MCP Task Management Server would:
-1. Create a new project with application_id "inventory-manager" and the specified Markdown-formatted notes
-2. Add the five specified tasks to the project
+1. Create a new plan with application_id "inventory-manager" and the specified Markdown-formatted notes
+2. Add the five specified tasks to the plan
 3. Add detailed Markdown-formatted notes to the database schema task
 4. Set appropriate priorities for each task
 5. Update the status of the first two tasks to "in_progress"
-6. Return a summary of the created project and tasks
+6. Return a summary of the created plan and tasks
+
+## Developer Documentation
+
+For information on how to set up a development environment, contribute to the project, and understand the codebase structure, please refer to the [Developer Guide](DEVELOPERS.md).
+
+For contribution guidelines, including commit message format and pull request process, see [Contributing Guidelines](CONTRIBUTING.md).
 
 ## License
 
