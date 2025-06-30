@@ -1,6 +1,8 @@
 # Valkey MCP Task Management Server
 
-[![Build and Publish Container](https://github.com/jbrinkman/valkey-ai-tasks/actions/workflows/publish-container-image.yml/badge.svg)](https://github.com/jbrinkman/valkey-ai-tasks/actions/workflows/publish-container-image.yml)
+[![Lint](https://github.com/jbrinkman/valkey-ai-tasks/actions/workflows/lint.yml/badge.svg)](https://github.com/jbrinkman/valkey-ai-tasks/actions/workflows/lint.yml)
+[![Publish Container](https://github.com/jbrinkman/valkey-ai-tasks/actions/workflows/publish-container-image.yml/badge.svg)](https://github.com/jbrinkman/valkey-ai-tasks/actions/workflows/publish-container-image.yml)
+[![Release](https://github.com/jbrinkman/valkey-ai-tasks/actions/workflows/create-release.yml/badge.svg)](https://github.com/jbrinkman/valkey-ai-tasks/actions/workflows/create-release.yml)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
 
 A task management system that implements the Model Context Protocol (MCP) for seamless integration with agentic AI tools. This system allows AI agents to create, manage, and track tasks within plans using Valkey as the persistence layer.
@@ -13,6 +15,7 @@ A task management system that implements the Model Context Protocol (MCP) for se
 - Status tracking for tasks
 - Notes support with Markdown formatting for both plans and tasks
 - MCP server for AI agent integration
+- Supports STDIO, SSE and Streamable HTTP transport protocols
 - Docker container support for easy deployment
 
 ## Architecture
@@ -45,7 +48,7 @@ docker run -d --name valkey-mcp \
   -p 6379:6379 \
   -v valkey-data:/data \
   -e ENABLE_SSE=true \
-  valkey-tasks-mcp-server:latest
+  ghcr.io/jbrinkman/valkey-ai-tasks:latest
 ```
 
 #### Running with Streamable HTTP
@@ -56,7 +59,7 @@ docker run -d --name valkey-mcp \
   -p 6379:6379 \
   -v valkey-data:/data \
   -e ENABLE_STREAMABLE_HTTP=true \
-  valkey-tasks-mcp-server:latest
+  ghcr.io/jbrinkman/valkey-ai-tasks:latest
 ```
 
 #### Running with STDIO (For direct process communication)
@@ -65,7 +68,7 @@ docker run -d --name valkey-mcp \
 docker run -i --rm --name valkey-mcp \
   -v valkey-data:/data \
   -e ENABLE_STDIO=true \
-  valkey-tasks-mcp-server:latest
+  ghcr.io/jbrinkman/valkey-ai-tasks:latest
 ```
 
 ### Using the Container Images
@@ -75,7 +78,7 @@ The container images are published to GitHub Container Registry and can be pulle
 ```bash
 docker pull ghcr.io/jbrinkman/valkey-ai-tasks:latest
 # or a specific version
-docker pull ghcr.io/jbrinkman/valkey-ai-tasks:1.2.3
+docker pull ghcr.io/jbrinkman/valkey-ai-tasks:1.1.0
 ```
 
 ## MCP API Reference
@@ -135,9 +138,11 @@ The server automatically selects the appropriate transport based on:
 
 ### Local MCP Configuration
 
-To configure an AI agent to use the local MCP server, add the following to your `~/.codeium/windsurf/mcp_config.json` file:
+To configure an AI agent to use the local MCP server, add the following to your MCP configuration file (the exact file location depends on your AI Agent):
 
 #### Using SSE Transport (Default)
+
+> Note: The docker container should already be running.
 
 ```json
 {
@@ -151,12 +156,13 @@ To configure an AI agent to use the local MCP server, add the following to your 
 
 #### Using Streamable HTTP Transport
 
+> Note: The docker container should already be running.
+
 ```json
 {
   "mcpServers": {
     "valkey-tasks": {
-      "serverUrl": "http://localhost:8080/mcp",
-      "transport": "streamable-http"
+      "serverUrl": "http://localhost:8080/mcp"
     }
   }
 }
@@ -178,11 +184,9 @@ For agentic tools that need to start and manage the MCP server process, use a co
         "-i",
         "--rm",
         "-v", "valkey-data:/data"
-        "-e", "ENABLE_SSE=false",
-        "-e", "ENABLE_STREAMABLE_HTTP=false",
         "-e", "ENABLE_STDIO=true",
-        "valkey-mcp-server"
-      ]
+        "ghcr.io/jbrinkman/valkey-ai-tasks:latest"
+      ]    
     }
   }
 }
