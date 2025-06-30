@@ -1,3 +1,16 @@
+## [1.1.2](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.1.1...v1.1.2) (2025-06-30)
+
+### Bug Fixes
+
+* add linting to the project and fix existing lint errors ([c7b4efd](https://github.com/jbrinkman/valkey-ai-tasks/commit/c7b4efdc6ed115a008c72ef539d13f6c5f11ace1))
+* replace GITHUB_TOKEN with MY_TOKEN to allow workflow events to trigger next workflow ([bc926b0](https://github.com/jbrinkman/valkey-ai-tasks/commit/bc926b05deaafd5cb6b85e7d0aa5b5511b878d42))
+
+### Documentation
+
+* add contributing guidelines with conventional commits and workflow ([57bfb08](https://github.com/jbrinkman/valkey-ai-tasks/commit/57bfb083ebe7dbc540afa0de8f99c8922b196868))
+* reorganize docs by moving dev content to DEVELOPERS.md ([e7c9a57](https://github.com/jbrinkman/valkey-ai-tasks/commit/e7c9a5745347ecea49256977f0a10ddd70f7132a))
+* update build status badge with new workflow path ([f7725e2](https://github.com/jbrinkman/valkey-ai-tasks/commit/f7725e208c3105550ee67346aec2b9a23e9f9cb8))
+
 ## [1.1.0](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.0.0...v1.1.0) (2025-06-28)
 
 ### Features
