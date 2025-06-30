@@ -18,9 +18,10 @@ By participating in this project, you agree to abide by our code of conduct. Ple
 1. Make your changes in your feature branch
 2. Add tests for your changes
 3. Ensure all tests pass with `make test`
-4. Update documentation as needed
-5. Commit your changes using [Conventional Commits](#conventional-commits)
-6. Push your branch and submit a pull request
+4. Run linting with `make lint` and fix any issues
+5. Update documentation as needed
+6. Commit your changes using [Conventional Commits](#conventional-commits)
+7. Push your branch and submit a pull request
 
 ## Pull Request Process
 
@@ -99,12 +100,68 @@ Previous endpoints are no longer supported.
 - Integration tests should be in the `tests/integration` directory
 - Unit tests should be in the same package as the code they test
 
-## Code Style
+## Code Style and Linting
 
 - Follow standard Go coding conventions
 - Use `gofmt` to format your code
 - Follow the recommendations in [Effective Go](https://golang.org/doc/effective_go)
-- Run `golint` and `go vet` to catch common issues
+- Run `make lint` to check your code with golangci-lint
+
+### Linting
+
+This project uses [golangci-lint](https://github.com/golangci/golangci-lint) for code quality checks. The linter is configured in the `.golangci.yml` file at the root of the repository.
+
+#### Running the Linter Locally
+
+To run the linter locally:
+
+```bash
+# Run linting
+make lint
+
+# Run linting with verbose output
+make lint verbose=1
+
+# Run linting and automatically fix issues where possible
+make lint fix=1
+```
+
+#### Linters Enabled
+
+The following linters are enabled:
+
+- `errcheck`: Checks for unchecked errors
+- `gosimple`: Simplifies code
+- `govet`: Examines Go source code for suspicious constructs
+- `ineffassign`: Detects ineffectual assignments
+- `staticcheck`: Performs static analysis
+- `typecheck`: Type checking
+- `unused`: Checks for unused code
+- `gosec`: Security-focused linter
+- `gofmt`: Formatting checks
+- `goimports`: Import formatting
+- `misspell`: Spelling mistakes
+- `revive`: Extensible linter (replacement for golint)
+- `stylecheck`: Style checking
+- `unconvert`: Unnecessary type conversions
+- `unparam`: Unused function parameters
+
+#### CI Integration
+
+The linter runs automatically on all pull requests through GitHub Actions. Any linting issues will be reported as comments on the PR.
+
+#### Pre-commit Hook
+
+A pre-commit hook is available to run linting before each commit. To install it:
+
+```bash
+# Create a symbolic link to the pre-commit hook
+ln -sf ../../scripts/pre-commit .git/hooks/pre-commit
+# Or copy it (won't receive updates)
+# cp scripts/pre-commit .git/hooks/
+```
+
+This will run golangci-lint on your staged Go files before each commit and prevent commits that introduce linting errors.
 
 ## Documentation
 

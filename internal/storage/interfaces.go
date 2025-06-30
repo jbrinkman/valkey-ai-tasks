@@ -40,5 +40,7 @@ type TaskRepositoryInterface interface {
 }
 
 // Ensure the concrete types implement the interfaces
-var _ PlanRepositoryInterface = (*PlanRepository)(nil)
-var _ TaskRepositoryInterface = (*TaskRepository)(nil)
+var (
+	_ PlanRepositoryInterface = (*PlanRepository)(nil)
+	_ TaskRepositoryInterface = (*TaskRepository)(nil)
+)

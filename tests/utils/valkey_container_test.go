@@ -64,7 +64,7 @@ func TestPopulateTestData(t *testing.T) {
 
 	// Verify projects exist in Valkey
 	for _, projectID := range projectIDs {
-		exists, err := container.Client.Exists(ctx, []string{"project:" + projectID})
+		exists, err := container.Client.Exists(ctx, []string{"plan:" + projectID})
 		require.NoError(t, err)
 		assert.Equal(t, int64(1), exists)
 	}

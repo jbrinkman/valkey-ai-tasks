@@ -76,7 +76,13 @@ func CleanupValkeyData(ctx context.Context, t *testing.T, client *valkeyglide.Cl
 
 // PopulateTestData creates test plans and tasks in Valkey
 // This is useful for integration tests that need pre-populated data
-func PopulateTestData(ctx context.Context, t *testing.T, client *valkeyglide.Client, planCount int, tasksPerPlan int) ([]string, []string) {
+func PopulateTestData(
+	ctx context.Context,
+	t *testing.T,
+	client *valkeyglide.Client,
+	planCount int,
+	tasksPerPlan int,
+) ([]string, []string) {
 	t.Helper()
 	req := require.New(t)
 
@@ -101,7 +107,7 @@ func PopulateTestData(ctx context.Context, t *testing.T, client *valkeyglide.Cli
 		req.Greater(result, int64(0), "Expected to set at least one field")
 
 		// Add to plans list
-		result, err = client.SAdd(ctx, "plans", []string{planID})
+		_, err = client.SAdd(ctx, "plans", []string{planID})
 		req.NoError(err, "Failed to add plan to plans list")
 
 		// Create tasks for this plan
@@ -123,18 +129,18 @@ func PopulateTestData(ctx context.Context, t *testing.T, client *valkeyglide.Cli
 			req.Greater(result, int64(0), "Expected to set at least one field")
 
 			// Add to plan tasks list
-			result, err = client.SAdd(ctx, fmt.Sprintf("plan:%s:tasks", planID), []string{taskID})
+			_, err = client.SAdd(ctx, fmt.Sprintf("plan:%s:tasks", planID), []string{taskID})
 			req.NoError(err, "Failed to add task to plan tasks list")
 
 			// Add to tasks list
-			result, err = client.SAdd(ctx, "tasks", []string{taskID})
+			_, err = client.SAdd(ctx, "tasks", []string{taskID})
 			req.NoError(err, "Failed to add task to tasks list")
 
 			// Add to task order sorted set
 			membersScoreMap := map[string]float64{
 				taskID: float64(j),
 			}
-			result, err = client.ZAdd(ctx, fmt.Sprintf("plan:%s:tasks:order", planID), membersScoreMap)
+			_, err = client.ZAdd(ctx, fmt.Sprintf("plan:%s:tasks:order", planID), membersScoreMap)
 			req.NoError(err, "Failed to add task to order sorted set")
 		}
 	}

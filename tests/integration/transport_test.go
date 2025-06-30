@@ -24,7 +24,11 @@ type TransportTestSuite struct {
 }
 
 // setupTestServer creates and starts an MCP server with the specified configuration
-func (s *TransportTestSuite) setupTestServer(enableSSE bool, enableStreamableHTTP bool, enableSTDIO bool) (*mcp.MCPGoServer, int, func()) {
+func (s *TransportTestSuite) setupTestServer(
+	enableSSE bool,
+	enableStreamableHTTP bool,
+	enableSTDIO bool,
+) (*mcp.MCPGoServer, int, func()) {
 	// Get repositories
 	planRepo := s.GetPlanRepository()
 	taskRepo := s.GetTaskRepository()
@@ -85,35 +89,35 @@ func (s *TransportTestSuite) TestHealthEndpoint() {
 		name                 string
 		enableSSE            bool
 		enableStreamableHTTP bool
-		enableSTDIO         bool
+		enableSTDIO          bool
 		expectedStatus       int
 	}{
 		{
 			name:                 "Both HTTP transports enabled",
 			enableSSE:            true,
 			enableStreamableHTTP: true,
-			enableSTDIO:         false,
+			enableSTDIO:          false,
 			expectedStatus:       http.StatusOK,
 		},
 		{
 			name:                 "Only SSE enabled",
 			enableSSE:            true,
 			enableStreamableHTTP: false,
-			enableSTDIO:         false,
+			enableSTDIO:          false,
 			expectedStatus:       http.StatusOK,
 		},
 		{
 			name:                 "Only Streamable HTTP enabled",
 			enableSSE:            false,
 			enableStreamableHTTP: true,
-			enableSTDIO:         false,
+			enableSTDIO:          false,
 			expectedStatus:       http.StatusOK,
 		},
 		{
 			name:                 "HTTP and STDIO enabled",
 			enableSSE:            true,
 			enableStreamableHTTP: false,
-			enableSTDIO:         true,
+			enableSTDIO:          true,
 			expectedStatus:       http.StatusOK,
 		},
 	}
@@ -192,7 +196,7 @@ func (s *TransportTestSuite) TestRootEndpointRedirection() {
 			// Check redirection
 			assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode, "Should return redirect status")
 			location := resp.Header.Get("Location")
-			
+
 			// Extract the path from the expected URL for comparison
 			expectedPath := tc.expectedRedirectURL[len(fmt.Sprintf("http://localhost:%d", port)):]
 			assert.Equal(t, expectedPath, location, "Should redirect to expected path")
@@ -256,7 +260,7 @@ func (s *TransportTestSuite) TestStreamableHTTPTransport() {
 	var result map[string]interface{}
 	err = json.Unmarshal(body, &result)
 	require.NoError(s.T(), err, "Response should be valid JSON")
-	
+
 	// Just verify that we got a valid JSON response
 	s.T().Logf("Response: %s", string(body))
 	assert.NotEmpty(s.T(), result, "Response should not be empty")
@@ -290,7 +294,7 @@ func (s *TransportTestSuite) TestConcurrentConnections() {
 				return
 			}
 			resp.Body.Close()
-			
+
 			// Wait a bit to simulate connection time
 			time.Sleep(100 * time.Millisecond)
 

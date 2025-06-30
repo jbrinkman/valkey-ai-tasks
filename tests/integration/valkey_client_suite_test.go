@@ -69,7 +69,7 @@ func (s *ValkeyClientSuite) TestConnectionFailure() {
 	if randomPort == 6379 {
 		randomPort = 10999 // Ensure we never use 6379
 	}
-	
+
 	// Test connection to non-existent server
 	valkeyClient, err := storage.NewValkeyClient("non-existent-host", randomPort, "", "")
 	if err == nil {

@@ -40,8 +40,8 @@ func StartValkeyContainer(ctx context.Context, t *testing.T) (*ValkeyContainer, 
 
 	// Create Valkey container request with a random port mapping
 	// This ensures we never use the same port as a potential development instance
-	valkeyContainer, err := valkey.RunContainer(ctx,
-		testcontainers.WithImage(ValkeyImage),
+	valkeyContainer, err := valkey.Run(ctx,
+		ValkeyImage,
 		valkey.WithLogLevel("notice"),
 		testcontainers.WithExposedPorts("6379/tcp"),
 		testcontainers.WithWaitStrategy(
@@ -61,7 +61,7 @@ func StartValkeyContainer(ctx context.Context, t *testing.T) (*ValkeyContainer, 
 	host := parts[0]
 	port, err := strconv.Atoi(parts[1])
 	req.NoError(err, "Failed to parse Valkey container port")
-	
+
 	// Safety check: ensure we're not using port 6379 which could conflict with a development instance
 	req.NotEqual(6379, port, "Test container must not use port 6379 to avoid conflicts with development instances")
 

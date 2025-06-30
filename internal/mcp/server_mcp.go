@@ -728,8 +728,11 @@ func (s *MCPGoServer) registerCreateTaskTool() {
 			mcp.Description("Current implementation status of this task (optional, defaults to 'pending')"),
 			mcp.Enum("pending", "in_progress", "completed", "cancelled"),
 		),
-		mcp.WithString("priority",
-			mcp.Description("Importance and urgency of this task in the overall feature implementation plan (optional, defaults to 'medium')"),
+		mcp.WithString(
+			"priority",
+			mcp.Description(
+				"Importance and urgency of this task in the overall feature implementation plan (optional, defaults to 'medium')",
+			),
 			mcp.Enum("low", "medium", "high"),
 		),
 		mcp.WithString("notes",
@@ -1000,9 +1003,12 @@ func (s *MCPGoServer) registerBulkCreateTasksTool() {
 			mcp.Required(),
 			mcp.Description("Plan ID these tasks belong to"),
 		),
-		mcp.WithString("tasks_json",
+		mcp.WithString(
+			"tasks_json",
 			mcp.Required(),
-			mcp.Description("JSON string containing an array of task definitions, each containing title (required), description (optional), status (optional), and priority (optional)"),
+			mcp.Description(
+				"JSON string containing an array of task definitions, each containing title (required), description (optional), status (optional), and priority (optional)",
+			),
 		),
 	)
 

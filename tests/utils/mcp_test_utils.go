@@ -19,13 +19,17 @@ func GetRandomPort(t *testing.T) int {
 
 	l, err := net.ListenTCP("tcp", addr)
 	require.NoError(t, err, "Failed to listen on TCP address")
-	defer l.Close()
+	defer l.Close() //nolint:errcheck
 
-	return l.Addr().(*net.TCPAddr).Port
+	return l.Addr().(*net.TCPAddr).Port //nolint:errcheck
 }
 
 // CreateTestMCPServer creates an MCP server for testing with a random port
-func CreateTestMCPServer(t *testing.T, planRepo storage.PlanRepositoryInterface, taskRepo storage.TaskRepositoryInterface) (*mcp.MCPGoServer, int) {
+func CreateTestMCPServer(
+	t *testing.T,
+	planRepo storage.PlanRepositoryInterface,
+	taskRepo storage.TaskRepositoryInterface,
+) (*mcp.MCPGoServer, int) {
 	t.Helper()
 
 	// Get a random port for the test server

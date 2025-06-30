@@ -8,7 +8,7 @@ import (
 type PlanStatus string
 
 const (
-	PlanStatusNew       PlanStatus = "new"
+	PlanStatusNew        PlanStatus = "new"
 	PlanStatusInProgress PlanStatus = "inprogress"
 	PlanStatusCompleted  PlanStatus = "completed"
 	PlanStatusCancelled  PlanStatus = "cancelled"
@@ -61,14 +61,14 @@ func (p *Plan) FromMap(data map[string]string) error {
 	p.ApplicationID = data["application_id"]
 	p.Name = data["name"]
 	p.Description = data["description"]
-	
+
 	// Get notes with backward compatibility
 	if notes, ok := data["notes"]; ok {
 		p.Notes = notes
 	} else {
 		p.Notes = ""
 	}
-	
+
 	// Handle status with backward compatibility
 	if status, ok := data["status"]; ok {
 		p.Status = PlanStatus(status)

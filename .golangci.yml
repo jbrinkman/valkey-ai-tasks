@@ -1,0 +1,94 @@
+# Defines the configuration version.
+# The only possible value is "2".
+version: "2"
+
+# Linters configuration
+linters:
+  # Enable specific linters
+  enable:
+    - errcheck # Detect unchecked errors
+    - govet # Vet examines Go source code and reports suspicious constructs
+    - ineffassign # Detects when assignments to existing variables are not used
+    - staticcheck # Go static analysis, applying a ton of rules
+    - unused # Checks for unused constants, variables, functions and types
+  
+  # All available settings of specific linters
+  settings:
+    errcheck:
+      # Report about not checking of errors in type assertions: `a := b.(MyStruct)`
+      check-type-assertions: true
+      # Report about assignment of errors to blank identifier: `num, _ := strconv.Atoi(numStr)`
+      check-blank: true
+      # List of functions to exclude from checking
+      exclude-functions:
+        - (*encoding/json.Encoder).Encode
+        - (net.Listener).Close
+        - (*github.com/jbrinkman/valkey-ai-tasks/internal/storage.ValkeyClient).Close
+        - r.client.client.Del
+        - r.client.client.ZRem
+    
+    gosec:
+      # To select a subset of rules to run
+      includes:
+        - G101 # Look for hard coded credentials
+        - G102 # Bind to all interfaces
+        - G103 # Audit the use of unsafe block
+    
+    misspell:
+      # Correct spellings using locale preferences for US or UK
+      locale: US
+    
+    unparam:
+      # Inspect exported functions, default is false
+      check-exported: false
+  
+  # Defines a set of rules to ignore issues
+  exclusions:
+    # Excluding configuration per-path, per-linter, per-text and per-source
+    rules:
+      # Exclude some linters from running on tests files
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gosec
+          - typecheck
+      
+      # Exclude typecheck errors in test utility files
+      - path: tests/utils/
+        linters:
+          - typecheck
+
+# Formatters configuration
+formatters:
+  enable:
+    - golines
+    - gofumpt
+  settings:
+    golines:
+      # Target maximum line length
+      max-len: 127
+    gofumpt:
+      # Module path which contains the source code being formatted
+      module-path: github.com/jbrinkman/valkey-ai-tasks
+
+# Options for analysis running
+run:
+  # Timeout for analysis, e.g. 30s, 5m, default is 1m
+  timeout: 5m
+  # Include test files or not, default is true
+  tests: false
+  # Allow multiple parallel golangci-lint instances running
+  allow-parallel-runners: false
+
+# Output configuration options
+output:
+  formats:
+    text:
+      path: stdout
+
+# Issues configuration
+issues:
+  # Maximum count of issues with the same text
+  max-same-issues: 3
+  # Maximum issues count per one linter
+  max-issues-per-linter: 50

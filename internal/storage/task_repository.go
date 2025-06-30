@@ -31,7 +31,11 @@ func NewTaskRepository(client *ValkeyClient) *TaskRepository {
 }
 
 // Create adds a new task to a plan
-func (r *TaskRepository) Create(ctx context.Context, planID, title, description string, priority models.TaskPriority) (*models.Task, error) {
+func (r *TaskRepository) Create(
+	ctx context.Context,
+	planID, title, description string,
+	priority models.TaskPriority,
+) (*models.Task, error) {
 	// Check if the plan exists
 	exists, err := r.client.client.SIsMember(ctx, plansListKey, planID)
 	if err != nil {
@@ -69,7 +73,10 @@ func (r *TaskRepository) Create(ctx context.Context, planID, title, description 
 	_, err = r.client.client.ZAdd(ctx, planTasksKey, map[string]float64{id: float64(task.Order)})
 	if err != nil {
 		// Try to clean up the task if adding to the set fails
-		r.client.client.Del(ctx, []string{taskKey})
+		_, err2 := r.client.client.Del(ctx, []string{taskKey})
+		if err2 != nil {
+			return nil, fmt.Errorf("failed to clean up task: %w", err2)
+		}
 		return nil, fmt.Errorf("failed to add task to plan: %w", err)
 	}
 
@@ -413,6 +420,7 @@ func (r *TaskRepository) CreateBulk(ctx context.Context, planID string, taskInpu
 		_, err = r.client.client.HSet(ctx, taskKey, task.ToMap())
 		if err != nil {
 			// Try to clean up already created tasks
+			//nolint:errcheck
 			for _, createdTask := range createdTasks {
 				r.client.client.Del(ctx, []string{GetTaskKey(createdTask.ID)})
 				r.client.client.ZRem(ctx, planTasksKey, []string{createdTask.ID})
@@ -424,8 +432,9 @@ func (r *TaskRepository) CreateBulk(ctx context.Context, planID string, taskInpu
 		_, err = r.client.client.ZAdd(ctx, planTasksKey, map[string]float64{id: float64(task.Order)})
 		if err != nil {
 			// Try to clean up the task if adding to the sorted set fails
-			r.client.client.Del(ctx, []string{taskKey})
+			r.client.client.Del(ctx, []string{taskKey}) //nolint:errcheck
 			// Also clean up already created tasks
+			//nolint:errcheck
 			for _, createdTask := range createdTasks {
 				r.client.client.Del(ctx, []string{GetTaskKey(createdTask.ID)})
 				r.client.client.ZRem(ctx, planTasksKey, []string{createdTask.ID})
@@ -558,7 +567,11 @@ func (r *TaskRepository) getAllTaskIDs(ctx context.Context) ([]string, error) {
 }
 
 // ListByPlanAndStatus returns all tasks for a plan with the given status
-func (r *TaskRepository) ListByPlanAndStatus(ctx context.Context, planID string, status models.TaskStatus) ([]*models.Task, error) {
+func (r *TaskRepository) ListByPlanAndStatus(
+	ctx context.Context,
+	planID string,
+	status models.TaskStatus,
+) ([]*models.Task, error) {
 	// Get all tasks for the plan
 	tasks, err := r.ListByPlan(ctx, planID)
 	if err != nil {
@@ -593,8 +606,7 @@ func (r *TaskRepository) UpdatePlanStatus(ctx context.Context, planID string) er
 		return fmt.Errorf("failed to get plan: %w", err)
 	}
 
-	// Determine the new status based on tasks
-	newStatus := models.PlanStatusNew
+	var newStatus models.PlanStatus
 
 	// If there are no tasks, keep as "new"
 	if len(tasks) == 0 {

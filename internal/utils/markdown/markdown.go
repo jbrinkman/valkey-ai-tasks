@@ -74,11 +74,7 @@ func validateBalancedElements(content string) bool {
 	inlineCodeCount := strings.Count(content, "`")
 	// Subtract the code block backticks (each block has 3)
 	inlineCodeCount -= codeBlockCount * 3
-	if inlineCodeCount%2 != 0 {
-		return false
-	}
-
-	return true
+	return inlineCodeCount%2 == 0
 }
 
 // sanitizeHTML removes potentially harmful HTML tags

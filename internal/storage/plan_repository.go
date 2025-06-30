@@ -40,7 +40,10 @@ func (r *PlanRepository) Create(ctx context.Context, applicationID, name, descri
 	_, err = r.client.client.SAdd(ctx, plansListKey, []string{id})
 	if err != nil {
 		// Try to clean up the plan if adding to the set fails
-		r.client.client.Del(ctx, []string{planKey})
+		_, err2 := r.client.client.Del(ctx, []string{planKey})
+		if err2 != nil {
+			return nil, fmt.Errorf("failed to clean up plan: %w", err2)
+		}
 		return nil, fmt.Errorf("failed to add plan to list: %w", err)
 	}
 

@@ -130,7 +130,13 @@ func (s *TaskRepositorySuite) TestListTasksByPlan() {
 	task1, err := taskRepo.Create(s.Context, s.TestPlan.ID, "First Task", "First task description", models.TaskPriorityHigh)
 	s.NoError(err, "Failed to create first task")
 
-	task2, err := taskRepo.Create(s.Context, s.TestPlan.ID, "Second Task", "Second task description", models.TaskPriorityMedium)
+	task2, err := taskRepo.Create(
+		s.Context,
+		s.TestPlan.ID,
+		"Second Task",
+		"Second task description",
+		models.TaskPriorityMedium,
+	)
 	s.NoError(err, "Failed to create second task")
 
 	task3, err := taskRepo.Create(s.Context, s.TestPlan.ID, "Third Task", "Third task description", models.TaskPriorityLow)
@@ -170,7 +176,13 @@ func (s *TaskRepositorySuite) TestListTasksByStatus() {
 	taskPending, err := taskRepo.Create(s.Context, s.TestPlan.ID, "Pending Task", "A pending task", models.TaskPriorityMedium)
 	s.NoError(err, "Failed to create pending task")
 
-	taskInProgress, err := taskRepo.Create(s.Context, s.TestPlan.ID, "In Progress Task", "An in-progress task", models.TaskPriorityMedium)
+	taskInProgress, err := taskRepo.Create(
+		s.Context,
+		s.TestPlan.ID,
+		"In Progress Task",
+		"An in-progress task",
+		models.TaskPriorityMedium,
+	)
 	s.NoError(err, "Failed to create in-progress task")
 
 	// Update the second task to in-progress status
@@ -361,7 +373,13 @@ func (s *TaskRepositorySuite) TestMoveTaskBetweenPlans() {
 	s.NoError(err, "Failed to create second plan")
 
 	// Create a task in the first plan
-	task, err := taskRepo.Create(s.Context, s.TestPlan.ID, "Task to move", "This task will be moved", models.TaskPriorityMedium)
+	task, err := taskRepo.Create(
+		s.Context,
+		s.TestPlan.ID,
+		"Task to move",
+		"This task will be moved",
+		models.TaskPriorityMedium,
+	)
 	s.NoError(err, "Failed to create task")
 
 	// Verify task is in first plan
@@ -703,7 +721,11 @@ func (s *TaskRepositorySuite) TestMCPBulkCreateTasks() {
 	s.Require().NoError(err, "Failed to marshal request body")
 
 	// Send the request
-	resp, err := client.Post(server.URL+"/call-tool/bulk_create_tasks", "application/json", strings.NewReader(string(requestBodyJSON)))
+	resp, err := client.Post(
+		server.URL+"/call-tool/bulk_create_tasks",
+		"application/json",
+		strings.NewReader(string(requestBodyJSON)),
+	)
 	s.Require().NoError(err, "Failed to send request")
 	defer resp.Body.Close()
 

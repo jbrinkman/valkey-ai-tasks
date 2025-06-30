@@ -30,10 +30,10 @@ else
 	VERBOSE_FLAG=
 endif
 
-.PHONY: all build test integ-test clean fmt tidy coverage
+.PHONY: all build test integ-test clean fmt tidy coverage lint lint-install
 
 # Default target
-all: build test
+all: build test lint
 
 # Build the application
 build:
@@ -61,7 +61,8 @@ coverage:
 # Format code
 fmt:
 	@echo "Formatting code..."
-	@$(GOFMT) ./...
+	gofumpt -w .
+	golines -w --shorten-comments -m 127 .
 
 # Update dependencies
 tidy:
@@ -78,16 +79,24 @@ run:
 	@echo "Running application..."
 	@go run cmd/mcpserver/main.go
 
+# Lint code using golangci-lint
+lint:
+	@echo "Linting code..."
+	@golangci-lint run $(if $(verbose),-v,) $(if $(fix),--fix,)
+
 # Help target
 help:
 	@echo "Available targets:"
-	@echo "  all         : Build and run tests"
+	@echo "  all         : Build, test, and lint the application"
 	@echo "  build       : Build the application"
 	@echo "  test        : Run all tests"
 	@echo "                 Usage: make test [filter=TestName] [verbose=1]"
 	@echo "  integ-test  : Run integration tests only"
 	@echo "                 Usage: make integ-test [filter=TestName] [verbose=1]"
 	@echo "  coverage    : Generate test coverage report"
+	@echo "  lint        : Run linters on the code"
+	@echo "                 Usage: make lint [verbose=1] [fix=1]"
+	@echo "  lint-install: Install golangci-lint"
 	@echo "  fmt         : Format code"
 	@echo "  tidy        : Update dependencies"
 	@echo "  clean       : Clean build artifacts"
