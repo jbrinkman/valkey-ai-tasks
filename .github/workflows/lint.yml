@@ -24,16 +24,8 @@ jobs:
           cache: true
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v8
         with:
-          version: v2.2.1
+          version: v2.2
           args: --timeout=5m
-          only-new-issues: true
           
-      - name: Comment PR
-        uses: reviewdog/action-golangci-lint@v2
-        if: github.event_name == 'pull_request'
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          reporter: github-pr-review
-          level: warning
