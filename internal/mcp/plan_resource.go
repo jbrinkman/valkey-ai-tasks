@@ -64,7 +64,9 @@ func (p *PlanResourceProvider) RegisterResource(server *MCPGoServer) {
 	appPlansTemplate := mcp.NewResourceTemplate(
 		"ai-tasks://applications/{app_id}/plans/full",
 		"Application Plans Resource",
-		mcp.WithTemplateDescription("Returns a complete view of all plans for a specific application including their tasks and notes"),
+		mcp.WithTemplateDescription(
+			"Returns a complete view of all plans for a specific application including their tasks and notes",
+		),
 		mcp.WithTemplateMIMEType("application/json"),
 	)
 
@@ -245,7 +247,13 @@ func (p *PlanResourceProvider) handleAppPlansRequest(ctx context.Context, appID 
 		// Get tasks for the plan
 		tasks, err := p.taskRepo.ListByPlan(ctx, plan.ID)
 		if err != nil {
-			return nil, fmt.Errorf("%w: failed to get tasks for plan '%s' in application '%s': %v", ErrInternalStorage, plan.ID, appID, err)
+			return nil, fmt.Errorf(
+				"%w: failed to get tasks for plan '%s' in application '%s': %v",
+				ErrInternalStorage,
+				plan.ID,
+				appID,
+				err,
+			)
 		}
 
 		// Create the plan resource
@@ -321,5 +329,9 @@ func parseResourceURI(uri string) (*uriInfo, error) {
 	}
 
 	// Provide detailed error message for unsupported URI format
-	return nil, fmt.Errorf("%w: '%s' does not match any supported pattern. Expected formats: 'ai-tasks://plans/{id}/full', 'ai-tasks://plans/full', or 'ai-tasks://applications/{app_id}/plans/full'", ErrInvalidURI, uri)
+	return nil, fmt.Errorf(
+		"%w: '%s' does not match any supported pattern. Expected formats: 'ai-tasks://plans/{id}/full', 'ai-tasks://plans/full', or 'ai-tasks://applications/{app_id}/plans/full'",
+		ErrInvalidURI,
+		uri,
+	)
 }
