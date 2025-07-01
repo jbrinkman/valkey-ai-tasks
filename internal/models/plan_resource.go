@@ -5,7 +5,7 @@ package models
 type PlanResource struct {
 	// Plan details
 	Plan *Plan `json:"plan"`
-	
+
 	// Tasks associated with the plan
 	Tasks []*Task `json:"tasks"`
 }

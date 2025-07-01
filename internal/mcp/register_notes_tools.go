@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/jbrinkman/valkey-ai-tasks/internal/utils/markdown"
+	"github.com/mark3labs/mcp-go/mcp"
 )
 
 // registerNotesTools registers all notes-related tools with the MCP server

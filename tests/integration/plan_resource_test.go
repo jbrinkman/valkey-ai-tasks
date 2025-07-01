@@ -161,15 +161,15 @@ func (s *PlanResourceTestSuite) TestSinglePlanResource() {
 
 	// Parse the resource content
 	s.T().Logf("Plan resource content: %s", textContent.Text)
-	
+
 	// Debug the JSON content
 	var rawData map[string]interface{}
 	err = json.Unmarshal([]byte(textContent.Text), &rawData)
 	require.NoError(s.T(), err, "Failed to parse raw resource content")
-	
+
 	// Print the raw data for debugging
 	s.T().Logf("Raw plan data: %+v", rawData)
-	
+
 	// Now parse into the structured type with the correct nested structure
 	var planResource struct {
 		Plan struct {
@@ -220,7 +220,7 @@ func (s *PlanResourceTestSuite) TestAllPlansResource() {
 
 	// Get the TextResourceContents from the response
 	require.NotEmpty(s.T(), result.Contents, "Expected non-empty contents")
-	
+
 	// The first content should be TextResourceContents
 	textContent, ok := result.Contents[0].(mcp.TextResourceContents)
 	require.True(s.T(), ok, "Expected TextResourceContents")
@@ -232,15 +232,15 @@ func (s *PlanResourceTestSuite) TestAllPlansResource() {
 
 	// Parse the resource content
 	s.T().Logf("All plans resource content: %s", textContent.Text)
-	
+
 	// Debug the JSON content - it's an array, not an object
 	var plansList []map[string]interface{}
 	err = json.Unmarshal([]byte(textContent.Text), &plansList)
 	require.NoError(s.T(), err, "Failed to parse raw resource content")
-	
+
 	// Print the raw data for debugging
 	s.T().Logf("Raw all plans data: %+v", plansList)
-	
+
 	// Parse with the correct structure - array of plan objects
 	var plansResource []struct {
 		Plan struct {
@@ -298,10 +298,10 @@ func (s *PlanResourceTestSuite) TestAppPlansResource() {
 	var plansList []map[string]interface{}
 	err = json.Unmarshal([]byte(textContent.Text), &plansList)
 	require.NoError(s.T(), err, "Failed to parse raw resource content")
-	
+
 	// Print the raw data for debugging
 	s.T().Logf("Raw app plans data: %+v", plansList)
-	
+
 	// Parse with the correct structure - array of plan objects
 	var appPlansResource []struct {
 		Plan struct {
@@ -314,13 +314,13 @@ func (s *PlanResourceTestSuite) TestAppPlansResource() {
 	}
 	err = json.Unmarshal([]byte(textContent.Text), &appPlansResource)
 	require.NoError(s.T(), err, "Failed to parse resource content")
-	
+
 	// Debug the parsed content
 	s.T().Logf("Parsed app plans: %+v", appPlansResource)
 
 	// Verify we have at least one plan
 	assert.NotEmpty(s.T(), appPlansResource, "Expected at least one plan")
-	
+
 	// Verify we can find the created plan
 	found := false
 	for _, p := range appPlansResource {
@@ -401,7 +401,7 @@ func (s *PlanResourceTestSuite) TestLegacyRequestFormat() {
 
 	// Get the TextResourceContents from the response
 	require.NotEmpty(s.T(), result.Contents, "Expected non-empty contents")
-	
+
 	// The first content should be TextResourceContents
 	textContent, ok := result.Contents[0].(mcp.TextResourceContents)
 	require.True(s.T(), ok, "Expected TextResourceContents")
@@ -433,11 +433,11 @@ func (s *PlanResourceTestSuite) TestPlanNotFound() {
 
 	// Read the resource using the client
 	result, err := readPlanResource(context.Background(), mcpClient, uri)
-	
+
 	// We expect an error for non-existent plan
 	assert.Error(s.T(), err, "Expected error for non-existent plan")
 	assert.Contains(s.T(), err.Error(), "plan not found", "Expected 'plan not found' in error message")
-	
+
 	// The result should be nil or have empty contents
 	if result != nil && len(result.Contents) > 0 {
 		// If we got a result with contents, it should be an error message
