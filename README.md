@@ -235,6 +235,65 @@ The system supports rich Markdown-formatted notes for both plans and tasks. This
 
 Notes content is sanitized to prevent XSS and other security issues while preserving Markdown formatting.
 
+## MCP Resources
+
+In addition to MCP tools, the system provides MCP resources that allow AI agents to access structured data directly. These resources provide a complete view of plans and tasks in a single request, which is more efficient than making multiple tool calls.
+
+### Available Resources
+
+#### Plan Resource
+
+The Plan Resource provides a complete view of a plan, including its tasks and notes. It supports the following URI patterns:
+
+- **Single Plan**: `ai-tasks://plans/{id}/full` - Returns a specific plan with its tasks
+- **All Plans**: `ai-tasks://plans/full` - Returns all plans with their tasks
+- **Application Plans**: `ai-tasks://applications/{app_id}/plans/full` - Returns all plans for a specific application
+
+Each resource returns a JSON object or array with the following structure:
+
+```json
+{
+  "id": "plan-123",
+  "application_id": "my-app",
+  "name": "New Feature Development",
+  "description": "Implement new features for the application",
+  "status": "new",
+  "notes": "# Project Notes\n\nThis project aims to implement the following features...",
+  "created_at": "2025-06-27T14:00:21Z",
+  "updated_at": "2025-07-01T13:04:01Z",
+  "tasks": [
+    {
+      "id": "task-456",
+      "plan_id": "plan-123",
+      "title": "Task 1",
+      "description": "Description for task 1",
+      "status": "pending",
+      "priority": "high",
+      "order": 0,
+      "notes": "# Task Notes\n\nThis task requires the following steps...",
+      "created_at": "2025-06-27T14:00:50Z",
+      "updated_at": "2025-07-01T12:04:27Z"
+    },
+    // Additional tasks...
+  ]
+}
+```
+
+### Using MCP Resources
+
+AI agents can access these resources using the MCP resource API. Here's an example of how to read a resource:
+
+```json
+{
+  "action": "read_resource",
+  "params": {
+    "uri": "ai-tasks://plans/123/full"
+  }
+}
+```
+
+This will return the complete plan resource including all tasks, which is more efficient than making separate calls to get the plan and then its tasks.
+
 ## Using with AI Agents
 
 AI agents can interact with this task management system through the MCP API using either SSE or Streamable HTTP transport. Here are examples for both transport protocols:

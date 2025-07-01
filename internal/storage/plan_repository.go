@@ -148,6 +148,13 @@ func (r *PlanRepository) Delete(ctx context.Context, id string) error {
 
 // List returns all plans
 func (r *PlanRepository) List(ctx context.Context) ([]*models.Plan, error) {
+	// Check for nil client
+	if r.client == nil {
+		return nil, fmt.Errorf("valkey client is nil")
+	}
+	if r.client.client == nil {
+		return nil, fmt.Errorf("valkey client.client is nil")
+	}
 	// Get all plan IDs
 	planIDs, err := r.client.client.SMembers(ctx, plansListKey)
 	if err != nil {
