@@ -37,6 +37,8 @@ This guide provides information for developers who want to contribute to or modi
 valkey-ai-tasks/
 ├── cmd/                  # Command-line applications
 │   └── mcpserver/        # MCP server entry point
+├── docs/                 # Documentation files
+│   └── mcp-resources.md  # Detailed documentation for MCP resources
 ├── examples/             # Example files and templates
 │   └── agent_prompts.md  # Example agent prompts for using notes
 ├── internal/             # Internal packages
@@ -164,6 +166,25 @@ The MCP server can be configured using the following environment variables:
 - Use table-driven tests when appropriate
 - Integration tests should be in the `tests/integration` directory
 - Unit tests should be in the same package as the code they test
+
+### MCP Server
+
+The MCP server is implemented in the `internal/mcp` package. It provides the following components:
+
+- **Server**: The main server implementation that handles HTTP requests and MCP protocol
+- **Tools**: MCP tools for managing plans, tasks, and notes
+- **Resources**: MCP resources for accessing structured data directly
+- **Transport**: Implementations of different MCP transport protocols (SSE, HTTP, STDIO)
+
+### MCP Resources
+
+The server provides MCP resources that allow AI agents to access structured data directly. These resources provide a complete view of plans and tasks in a single request, which is more efficient than making multiple tool calls.
+
+Currently implemented resources:
+
+- **Plan Resource**: Provides a complete view of a plan, including its tasks and notes
+
+For detailed documentation on the available resources, URI patterns, response formats, and error handling, see the [MCP Resources Documentation](docs/mcp-resources.md).
 
 ### Documentation
 
