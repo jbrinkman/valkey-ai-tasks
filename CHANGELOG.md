@@ -1,3 +1,9 @@
+## [1.4.0](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.3.0...v1.4.0) (2025-07-02)
+
+### Features
+
+* target amd64 platform specification for container builds ([3e8c41b](https://github.com/jbrinkman/valkey-ai-tasks/commit/3e8c41b3eddef579e633fa674fe654e4ab4bf1c3))
+
 ## [1.3.0](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.2.0...v1.3.0) (2025-07-02)
 
 ### Features
