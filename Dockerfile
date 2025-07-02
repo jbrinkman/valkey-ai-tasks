@@ -29,10 +29,8 @@ RUN cat <<EOF > /app/custom-entrypoint.sh
 # First run the original bundle-docker-entrypoint.sh to set up Valkey
 # but with the --daemonize flag to run it in the background
 VALKEY_ARGS="$@"
-if [[ "$VALKEY_ARGS" == "valkey-server" ]]; then
-VALKEY_ARGS="valkey-server --daemonize yes --save 60 1 --loglevel warning --appendonly yes --appendfsync everysec --dir /data --dbfilename valkey.db --appendfilename valkey.aof"
-fi
-/usr/local/bin/bundle-docker-entrypoint.sh $VALKEY_ARGS
+
+valkey-server --daemonize yes --save 60 1 --loglevel warning --appendonly yes --appendfsync everysec --dir /data --dbfilename valkey.db --appendfilename valkey.aof
 
 # Wait for Valkey to be ready
 until valkey-cli ping; do
