@@ -308,7 +308,6 @@ var (
 
 // parseResourceURI parses a resource URI and extracts relevant information
 func parseResourceURI(uri string) (*uriInfo, error) {
-
 	// Check for single plan pattern
 	if matches := singlePlanPattern.FindStringSubmatch(uri); len(matches) == 2 {
 		return &uriInfo{
