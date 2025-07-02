@@ -1,95 +1,55 @@
-## [1.4.0](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.3.0...v1.4.0) (2025-07-02)
+## [1.4.1](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.4.0...v1.4.1) (2025-07-02)
+
+
+
+# [1.4.0](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.3.0...v1.4.0) (2025-07-02)
+
 
 ### Features
 
 * target amd64 platform specification for container builds ([3e8c41b](https://github.com/jbrinkman/valkey-ai-tasks/commit/3e8c41b3eddef579e633fa674fe654e4ab4bf1c3))
 
-## [1.3.0](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.2.0...v1.3.0) (2025-07-02)
+
+
+# [1.3.0](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.2.0...v1.3.0) (2025-07-02)
+
 
 ### Features
 
 * add multi-platform container build support for amd64/arm64/windows ([d598eb1](https://github.com/jbrinkman/valkey-ai-tasks/commit/d598eb15ee5b0c3188d396a59d8874422c6cbae5))
 
-## [1.2.0](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.1.2...v1.2.0) (2025-07-02)
+
+
+# [1.2.0](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.1.2...v1.2.0) (2025-07-02)
+
 
 ### Features
 
 * implement MCP resources and tools for plan/task management ([b23f91e](https://github.com/jbrinkman/valkey-ai-tasks/commit/b23f91ed15b5583c897dda30cba19733e8fd633b))
 
-### Documentation
 
-* update README with new badges, container paths and transport protocol details ([a846ade](https://github.com/jbrinkman/valkey-ai-tasks/commit/a846aded849dc80e05d420feea352f14b7a4a476))
 
-### Styling
+## [1.1.2](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.1.0...v1.1.2) (2025-06-30)
 
-* cleanup whitespace and improve error message formatting ([df3a4b9](https://github.com/jbrinkman/valkey-ai-tasks/commit/df3a4b9644d0b48d91f109b53c519bddb900f578))
-* remove unnecessary blank line in parseResourceURI function ([ceecdf9](https://github.com/jbrinkman/valkey-ai-tasks/commit/ceecdf97ffa951ebdd0bbde8612ee2a31e65402b))
-
-### Code Refactoring
-
-* move resource URI patterns to package-level variables and remove debug test file ([de587ff](https://github.com/jbrinkman/valkey-ai-tasks/commit/de587ff2cc487f7e3aea0b2112cc16f388920238))
-
-### Continuous Integration
-
-* upgrade golangci-lint action to v8 and remove PR review automation ([00dd62e](https://github.com/jbrinkman/valkey-ai-tasks/commit/00dd62e6b025053d638328065c3d5548cd80788e))
-
-## [1.1.2](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.1.1...v1.1.2) (2025-06-30)
 
 ### Bug Fixes
 
 * add linting to the project and fix existing lint errors ([c7b4efd](https://github.com/jbrinkman/valkey-ai-tasks/commit/c7b4efdc6ed115a008c72ef539d13f6c5f11ace1))
-* replace GITHUB_TOKEN with MY_TOKEN to allow workflow events to trigger next workflow ([bc926b0](https://github.com/jbrinkman/valkey-ai-tasks/commit/bc926b05deaafd5cb6b85e7d0aa5b5511b878d42))
 
-### Documentation
 
-* add contributing guidelines with conventional commits and workflow ([57bfb08](https://github.com/jbrinkman/valkey-ai-tasks/commit/57bfb083ebe7dbc540afa0de8f99c8922b196868))
-* reorganize docs by moving dev content to DEVELOPERS.md ([e7c9a57](https://github.com/jbrinkman/valkey-ai-tasks/commit/e7c9a5745347ecea49256977f0a10ddd70f7132a))
-* update build status badge with new workflow path ([f7725e2](https://github.com/jbrinkman/valkey-ai-tasks/commit/f7725e208c3105550ee67346aec2b9a23e9f9cb8))
 
-## [1.1.0](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.0.0...v1.1.0) (2025-06-28)
+# [1.1.0](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.0.0...v1.1.0) (2025-06-28)
 
-### Features
-
-* add manual workflow trigger with version input for container publishing ([497140e](https://github.com/jbrinkman/valkey-ai-tasks/commit/497140e86ece71dc2644a24d35bfee94813caee6))
 
 ### Bug Fixes
 
 * add required GitHub permissions for release workflows and actions ([ed6535d](https://github.com/jbrinkman/valkey-ai-tasks/commit/ed6535d5f13016e2e8f0dec560613afbd9af2592))
 * replace GITHUB_TOKEN with MY_TOKEN to allow workflow events to trigger next workflow ([bc926b0](https://github.com/jbrinkman/valkey-ai-tasks/commit/bc926b05deaafd5cb6b85e7d0aa5b5511b878d42))
 
-### Continuous Integration
-
-* enhance container workflow triggers with tag-based events ([2356ab6](https://github.com/jbrinkman/valkey-ai-tasks/commit/2356ab6bc7f76b66ada524bdcaf0b25d991aa75b))
-* restrict container builds to release events only ([91a1683](https://github.com/jbrinkman/valkey-ai-tasks/commit/91a16834e52f8f1166734605836379dd75b0dd98))
-* split container build workflow into separate release and publish workflows ([7db9338](https://github.com/jbrinkman/valkey-ai-tasks/commit/7db9338f44e52272d72ead0fbda424694d5d140e))
-
-## [1.1.1](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.1.0...v1.1.1) (2025-06-28)
-
-
-
-# [1.1.0](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.0.3...v1.1.0) (2025-06-28)
-
 
 ### Features
 
 * add manual workflow trigger with version input for container publishing ([497140e](https://github.com/jbrinkman/valkey-ai-tasks/commit/497140e86ece71dc2644a24d35bfee94813caee6))
-
-
-
-## [1.0.3](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.0.2...v1.0.3) (2025-06-28)
-
-
-
-## [1.0.2](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.0.1...v1.0.2) (2025-06-27)
-
-
-### Bug Fixes
-
-* add required GitHub permissions for release workflows and actions ([ed6535d](https://github.com/jbrinkman/valkey-ai-tasks/commit/ed6535d5f13016e2e8f0dec560613afbd9af2592))
-
-
-
-## [1.0.1](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.0.0...v1.0.1) (2025-06-27)
 
 
 
@@ -138,3 +98,6 @@
 * create initial plan for adding STDIO transport support to MCP server ([75a68b3](https://github.com/jbrinkman/valkey-ai-tasks/commit/75a68b37f03bd31e8fdc2501c341fce5e8a19574))
 * implement CI/CD workflow for container image builds and releases ([8fdb287](https://github.com/jbrinkman/valkey-ai-tasks/commit/8fdb287b370a1d09ba0283f382bcee953cd83eca)), closes [#18](https://github.com/jbrinkman/valkey-ai-tasks/issues/18)
 * switch to SSE server and update tool descriptions for feature planning focus ([e24d8af](https://github.com/jbrinkman/valkey-ai-tasks/commit/e24d8afb04480952f18ad6019467ba34dd8de366))
+
+
+
