@@ -294,16 +294,20 @@ type uriInfo struct {
 	appID       string
 }
 
-// parseResourceURI parses a resource URI and extracts relevant information
-func parseResourceURI(uri string) (*uriInfo, error) {
+// URI patterns for resource parsing
+var (
 	// Pattern for single plan: ai-tasks://plans/{id}/full
-	singlePlanPattern := regexp.MustCompile(`ai-tasks://plans/([^/]+)/full$`)
+	singlePlanPattern = regexp.MustCompile(`ai-tasks://plans/([^/]+)/full$`)
 
 	// Pattern for all plans: ai-tasks://plans/full
-	allPlansPattern := regexp.MustCompile(`ai-tasks://plans/full$`)
+	allPlansPattern = regexp.MustCompile(`ai-tasks://plans/full$`)
 
 	// Pattern for application plans: ai-tasks://applications/{app_id}/plans/full
-	appPlansPattern := regexp.MustCompile(`ai-tasks://applications/([^/]+)/plans/full$`)
+	appPlansPattern = regexp.MustCompile(`ai-tasks://applications/([^/]+)/plans/full$`)
+)
+
+// parseResourceURI parses a resource URI and extracts relevant information
+func parseResourceURI(uri string) (*uriInfo, error) {
 
 	// Check for single plan pattern
 	if matches := singlePlanPattern.FindStringSubmatch(uri); len(matches) == 2 {
