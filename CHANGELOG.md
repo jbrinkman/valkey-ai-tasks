@@ -1,3 +1,9 @@
+## [1.3.0](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.2.0...v1.3.0) (2025-07-02)
+
+### Features
+
+* add multi-platform container build support for amd64/arm64/windows ([d598eb1](https://github.com/jbrinkman/valkey-ai-tasks/commit/d598eb15ee5b0c3188d396a59d8874422c6cbae5))
+
 ## [1.2.0](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.1.2...v1.2.0) (2025-07-02)
 
 ### Features
