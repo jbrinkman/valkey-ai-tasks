@@ -1,3 +1,26 @@
+## [1.2.0](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.1.2...v1.2.0) (2025-07-02)
+
+### Features
+
+* implement MCP resources and tools for plan/task management ([b23f91e](https://github.com/jbrinkman/valkey-ai-tasks/commit/b23f91ed15b5583c897dda30cba19733e8fd633b))
+
+### Documentation
+
+* update README with new badges, container paths and transport protocol details ([a846ade](https://github.com/jbrinkman/valkey-ai-tasks/commit/a846aded849dc80e05d420feea352f14b7a4a476))
+
+### Styling
+
+* cleanup whitespace and improve error message formatting ([df3a4b9](https://github.com/jbrinkman/valkey-ai-tasks/commit/df3a4b9644d0b48d91f109b53c519bddb900f578))
+* remove unnecessary blank line in parseResourceURI function ([ceecdf9](https://github.com/jbrinkman/valkey-ai-tasks/commit/ceecdf97ffa951ebdd0bbde8612ee2a31e65402b))
+
+### Code Refactoring
+
+* move resource URI patterns to package-level variables and remove debug test file ([de587ff](https://github.com/jbrinkman/valkey-ai-tasks/commit/de587ff2cc487f7e3aea0b2112cc16f388920238))
+
+### Continuous Integration
+
+* upgrade golangci-lint action to v8 and remove PR review automation ([00dd62e](https://github.com/jbrinkman/valkey-ai-tasks/commit/00dd62e6b025053d638328065c3d5548cd80788e))
+
 ## [1.1.2](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.1.1...v1.1.2) (2025-06-30)
 
 ### Bug Fixes
