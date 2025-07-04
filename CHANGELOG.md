@@ -1,3 +1,9 @@
+## [1.4.3](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.4.2...v1.4.3) (2025-07-04)
+
+### Bug Fixes
+
+* add support for linux/arm64 to the base image ([8aa3115](https://github.com/jbrinkman/valkey-ai-tasks/commit/8aa3115ab01d090dfcc427284fa6ca60ab92c6ad))
+
 ## [1.4.2](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.4.1...v1.4.2) (2025-07-04)
 
 ### Bug Fixes
