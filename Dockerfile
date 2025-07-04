@@ -15,7 +15,7 @@ COPY . .
 RUN go build -o mcpserver ./cmd/mcpserver
 
 # Create a production image
-FROM valkey/valkey-bundle:8-bookworm
+FROM valkey/valkey:8
 
 WORKDIR /app
 
