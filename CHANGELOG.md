@@ -1,3 +1,9 @@
+## [1.4.2](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.4.1...v1.4.2) (2025-07-04)
+
+### Bug Fixes
+
+* adjust base valkey image for dockerfile ([cd6db61](https://github.com/jbrinkman/valkey-ai-tasks/commit/cd6db612b4b8f16715e64102a9c3a5ebfd32683d))
+
 ## [1.4.1](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.4.0...v1.4.1) (2025-07-02)
 
 
@@ -98,6 +104,3 @@
 * create initial plan for adding STDIO transport support to MCP server ([75a68b3](https://github.com/jbrinkman/valkey-ai-tasks/commit/75a68b37f03bd31e8fdc2501c341fce5e8a19574))
 * implement CI/CD workflow for container image builds and releases ([8fdb287](https://github.com/jbrinkman/valkey-ai-tasks/commit/8fdb287b370a1d09ba0283f382bcee953cd83eca)), closes [#18](https://github.com/jbrinkman/valkey-ai-tasks/issues/18)
 * switch to SSE server and update tool descriptions for feature planning focus ([e24d8af](https://github.com/jbrinkman/valkey-ai-tasks/commit/e24d8afb04480952f18ad6019467ba34dd8de366))
-
-
-
