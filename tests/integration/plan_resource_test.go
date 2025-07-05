@@ -87,12 +87,56 @@ func (s *PlanResourceTestSuite) createTestPlan() *models.Plan {
 	return plan
 }
 
-// createMCPClient creates and initializes an MCP client
-func createMCPClient(url string) (*client.Client, error) {
+// ClientType represents the type of MCP client to create
+type ClientType string
+
+const (
+	ClientTypeStreamableHTTP ClientType = "streamable_http"
+	ClientTypeSSE            ClientType = "server-sent-events"
+	ClientTypeStdio          ClientType = "stdio"
+)
+
+// createMCPClient creates an MCP client of the specified type
+func (s *PlanResourceTestSuite) createMCPClient(clientType ClientType, url string) (*client.Client, error) {
+	var mcpClient *client.Client
+	var err error
+
+	switch clientType {
+	case ClientTypeStreamableHTTP:
+		mcpClient, err = client.NewStreamableHttpClient(url + "/mcp")
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Streamable HTTP client: %w", err)
+		}
+	case ClientTypeSSE:
+		// SSE client
+		mcpClient, err = client.NewSSEMCPClient(url + "/mcp")
+		if err != nil {
+			return nil, fmt.Errorf("failed to create SSE client: %w", err)
+		}
+	case ClientTypeStdio:
+		// In a real test scenario, we would need to set up a proper command to run
+		// and communicate with it via STDIO. For now, we'll just return an error
+		// and skip this test case.
+		return nil, fmt.Errorf("STDIO client not implemented for testing")
+	default:
+		return nil, fmt.Errorf("unsupported client type: %s", clientType)
+	}
+
+	return initializeClient(mcpClient)
+}
+
+// createStreamableClient creates and initializes an MCP client using Streamable HTTP
+// Kept for backward compatibility
+func createStreamableClient(url string) (*client.Client, error) {
 	mcpClient, err := client.NewStreamableHttpClient(url + "/mcp")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create MCP client: %w", err)
 	}
+	return initializeClient(mcpClient)
+}
+
+// initializeClient performs common client initialization
+func initializeClient(mcpClient *client.Client) (*client.Client, error) {
 	if mcpClient == nil {
 		return nil, fmt.Errorf("MCP client should not be nil")
 	}
@@ -107,7 +151,7 @@ func createMCPClient(url string) (*client.Client, error) {
 		},
 	}
 
-	err = mcpClient.Start(context.Background())
+	err := mcpClient.Start(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("failed to start client: %w", err)
 	}
@@ -129,73 +173,106 @@ func readPlanResource(ctx context.Context, c *client.Client, uri string) (*mcp.R
 	return result, err
 }
 
-// TestSinglePlanResource tests the single plan resource
+// TestSinglePlanResource tests the single plan resource with different transport protocols
 func (s *PlanResourceTestSuite) TestSinglePlanResource() {
 	// Create a test plan with tasks
 	plan := s.createTestPlan()
 
-	// Create an MCP client
-	url := fmt.Sprintf("http://localhost:%d", s.port)
-	mcpClient, err := createMCPClient(url)
-	require.NoError(s.T(), err, "Failed to create MCP client")
-
-	// Create the request URI
-	uri := fmt.Sprintf("ai-tasks://plans/%s/full", plan.ID)
-	s.T().Logf("Reading resource: %s", uri)
-
-	// Read the resource using the client
-	result, err := readPlanResource(context.Background(), mcpClient, uri)
-	require.NoError(s.T(), err, "Failed to read resource")
-	require.NotNil(s.T(), result, "Expected non-nil result")
-	require.NotEmpty(s.T(), result.Contents, "Expected non-empty contents")
-
-	// Get the first content item (should be TextResourceContents)
-	var textContent *mcp.TextResourceContents
-	for _, content := range result.Contents {
-		if tc, ok := content.(mcp.TextResourceContents); ok {
-			textContent = &tc
-			break
-		}
+	// Define test cases for different client types
+	testCases := []struct {
+		name       string
+		clientType ClientType
+		skip       bool
+		skipReason string
+	}{
+		{
+			name:       "Streamable HTTP Client",
+			clientType: ClientTypeStreamableHTTP,
+			skip:       false,
+		},
+		{
+			name:       "SSE Client",
+			clientType: ClientTypeSSE,
+			skip:       false,
+			skipReason: "SSE client not implemented for testing",
+		},
+		{
+			name:       "STDIO Client",
+			clientType: ClientTypeStdio,
+			skip:       true,
+			skipReason: "STDIO client not implemented for testing",
+		},
 	}
-	require.NotNil(s.T(), textContent, "Expected TextResourceContents")
 
-	// Parse the resource content
-	s.T().Logf("Plan resource content: %s", textContent.Text)
+	// Run subtests for each client type
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			if tc.skip {
+				t.Skipf("Skipping test: %s", tc.skipReason)
+				return
+			}
 
-	// Debug the JSON content
-	var rawData map[string]interface{}
-	err = json.Unmarshal([]byte(textContent.Text), &rawData)
-	require.NoError(s.T(), err, "Failed to parse raw resource content")
+			// Create the client
+			url := fmt.Sprintf("http://localhost:%d", s.port)
+			mcpClient, err := s.createMCPClient(tc.clientType, url)
+			require.NoError(t, err, "Failed to create MCP client")
 
-	// Print the raw data for debugging
-	s.T().Logf("Raw plan data: %+v", rawData)
+			// Create the request URI
+			uri := fmt.Sprintf("ai-tasks://plans/%s/full", plan.ID)
+			t.Logf("Reading resource: %s with client type: %s", uri, tc.clientType)
 
-	// Now parse into the structured type with the correct nested structure
-	var planResource struct {
-		Plan struct {
-			ID            string `json:"id"`
-			ApplicationID string `json:"application_id"`
-			Name          string `json:"name"`
-			Description   string `json:"description"`
-			Status        string `json:"status"`
-		} `json:"plan"`
-		Tasks []struct {
-			ID          string `json:"id"`
-			PlanID      string `json:"plan_id"`
-			Title       string `json:"title"`
-			Description string `json:"description"`
-			Status      string `json:"status"`
-			Priority    string `json:"priority"`
-		} `json:"tasks"`
+			// Read the resource using the client
+			result, err := readPlanResource(context.Background(), mcpClient, uri)
+			require.NoError(t, err, "Failed to read resource")
+			require.NotNil(t, result, "Expected non-nil result")
+			require.NotEmpty(t, result.Contents, "Expected non-empty contents")
+
+			// Get the first content item (should be TextResourceContents)
+			var textContent *mcp.TextResourceContents
+			for _, content := range result.Contents {
+				if tc, ok := content.(mcp.TextResourceContents); ok {
+					textContent = &tc
+					break
+				}
+			}
+			require.NotNil(t, textContent, "Expected TextResourceContents")
+
+			// Parse the resource content
+			t.Logf("Plan resource content: %s", textContent.Text)
+
+			// Debug the JSON content
+			var rawData map[string]interface{}
+			err = json.Unmarshal([]byte(textContent.Text), &rawData)
+			require.NoError(t, err, "Failed to parse raw resource content")
+
+			// Now parse into the structured type with the correct nested structure
+			var planResource struct {
+				Plan struct {
+					ID            string `json:"id"`
+					ApplicationID string `json:"application_id"`
+					Name          string `json:"name"`
+					Description   string `json:"description"`
+					Status        string `json:"status"`
+				} `json:"plan"`
+				Tasks []struct {
+					ID          string `json:"id"`
+					PlanID      string `json:"plan_id"`
+					Title       string `json:"title"`
+					Description string `json:"description"`
+					Status      string `json:"status"`
+					Priority    string `json:"priority"`
+				} `json:"tasks"`
+			}
+			err = json.Unmarshal([]byte(textContent.Text), &planResource)
+			require.NoError(t, err, "Failed to parse resource content")
+
+			// Verify the plan data
+			assert.Equal(t, plan.ID, planResource.Plan.ID)
+			assert.Equal(t, plan.ApplicationID, planResource.Plan.ApplicationID)
+			assert.Equal(t, plan.Name, planResource.Plan.Name)
+			assert.Len(t, planResource.Tasks, 2, "Expected 2 tasks")
+		})
 	}
-	err = json.Unmarshal([]byte(textContent.Text), &planResource)
-	require.NoError(s.T(), err, "Failed to parse resource content")
-
-	// Verify the plan data
-	assert.Equal(s.T(), plan.ID, planResource.Plan.ID)
-	assert.Equal(s.T(), plan.ApplicationID, planResource.Plan.ApplicationID)
-	assert.Equal(s.T(), plan.Name, planResource.Plan.Name)
-	assert.Len(s.T(), planResource.Tasks, 2, "Expected 2 tasks")
 }
 
 // TestAllPlansResource tests the all plans resource
@@ -205,7 +282,7 @@ func (s *PlanResourceTestSuite) TestAllPlansResource() {
 
 	// Create an MCP client
 	url := fmt.Sprintf("http://localhost:%d", s.port)
-	mcpClient, err := createMCPClient(url)
+	mcpClient, err := createStreamableClient(url)
 	require.NoError(s.T(), err, "Failed to create MCP client")
 
 	// Create the request URI
@@ -271,7 +348,7 @@ func (s *PlanResourceTestSuite) TestAppPlansResource() {
 
 	// Create an MCP client
 	url := fmt.Sprintf("http://localhost:%d", s.port)
-	mcpClient, err := createMCPClient(url)
+	mcpClient, err := createStreamableClient(url)
 	require.NoError(s.T(), err, "Failed to create MCP client")
 
 	// Create the request URI
@@ -382,7 +459,7 @@ func (s *PlanResourceTestSuite) TestInvalidResourceURI() {
 func (s *PlanResourceTestSuite) TestLegacyRequestFormat() {
 	// Create an MCP client
 	url := fmt.Sprintf("http://localhost:%d", s.port)
-	mcpClient, err := createMCPClient(url)
+	mcpClient, err := createStreamableClient(url)
 	require.NoError(s.T(), err, "Failed to create MCP client")
 
 	// Create a test plan to ensure we have data
@@ -424,7 +501,7 @@ func (s *PlanResourceTestSuite) TestLegacyRequestFormat() {
 func (s *PlanResourceTestSuite) TestPlanNotFound() {
 	// Create an MCP client
 	url := fmt.Sprintf("http://localhost:%d", s.port)
-	mcpClient, err := createMCPClient(url)
+	mcpClient, err := createStreamableClient(url)
 	require.NoError(s.T(), err, "Failed to create MCP client")
 
 	// Read a non-existent plan resource
