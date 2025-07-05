@@ -61,6 +61,7 @@ func NewMCPGoServer(planRepo storage.PlanRepositoryInterface, taskRepo storage.T
 		"Valkey Feature Planning & Task Management",
 		"1.0.0",
 		server.WithToolCapabilities(true),
+		server.WithResourceCapabilities(true, true),
 		server.WithRecovery(),
 	)
 
