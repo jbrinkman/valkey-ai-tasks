@@ -1,3 +1,9 @@
+## [1.4.4](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.4.3...v1.4.4) (2025-07-05)
+
+### Bug Fixes
+
+* add resource discovery to the MCP server ([ddf7437](https://github.com/jbrinkman/valkey-ai-tasks/commit/ddf7437c14d6e986ec5534b01b472af46d6de4ca))
+
 ## [1.4.3](https://github.com/jbrinkman/valkey-ai-tasks/compare/v1.4.2...v1.4.3) (2025-07-04)
 
 ### Bug Fixes
